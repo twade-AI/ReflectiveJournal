@@ -343,120 +343,154 @@ function StatSeal({ label, value, accent }) {
 
 // A petal-bloom chart. Five teardrop petals radiate from the centre, each
 // value's petal length proportional to how often it has been tagged.
+// A compass rose. Five spear-point arms radiate from the centre pivot; arm
+// length is proportional to how often that value has been tagged. Degree
+// ring with tick marks, central pivot with compass star.
 function ValuesChart({ counts, max }) {
-  const size = 360;
-  const innerR = 38;
-  const outerMax = 132;
-  const outerMin = 56;
-  const halfW = 24;
-  const labelR = outerMax + 28;
+  const size = 380;
+  const cx = size / 2, cy = size / 2;
+  const pivotR   = 22;   // central gold pivot
+  const ringIn   = 138;  // inner edge of degree ring
+  const ringOut  = 148;  // outer edge of degree ring
+  const armMax   = 128;  // arm tip at count=max
+  const armMin   = 54;   // arm tip at count=0 (keep visible)
+  const armHalfW = 14;   // arm half-width at the base
+  const labelR   = 170;  // label ring (outside the degree ring)
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
-  const petalPath = (outer) => {
-    const ctrlA = outer - (outer - innerR) * 0.12;
-    const ctrlB = innerR + (outer - innerR) * 0.18;
-    return `M 0 ${-outer} C ${halfW} ${-ctrlA} ${halfW} ${-ctrlB} 0 ${-innerR} C ${-halfW} ${-ctrlB} ${-halfW} ${-ctrlA} 0 ${-outer} Z`;
-  };
-
-  const petals = VALUES.map((v, i) => {
+  const arms = VALUES.map((v, i) => {
     const count = counts[v.id] || 0;
     const ratio = max ? count / max : 0;
-    const outer = outerMin + (outerMax - outerMin) * ratio;
-    const angle = i * 72;
-    const labelX = Math.sin(angle * Math.PI / 180) * labelR;
-    const labelY = -Math.cos(angle * Math.PI / 180) * labelR;
-    return { v, count, outer, angle, labelX, labelY, faded: count === 0 };
+    const tip = armMin + (armMax - armMin) * ratio;
+    const angle = i * 72;                          // 0°, 72°, 144°, 216°, 288°
+    const rad = angle * Math.PI / 180;
+    const labelX = Math.sin(rad) * labelR;
+    const labelY = -Math.cos(rad) * labelR;
+    return { v, count, tip, angle, labelX, labelY, faded: count === 0 };
   });
-  const topCount = Math.max(...petals.map(p => p.count));
-  const topPetal = topCount > 0 ? petals.find(p => p.count === topCount) : null;
+  const topCount = Math.max(...arms.map(a => a.count));
+  const topArm = topCount > 0 ? arms.find(a => a.count === topCount) : null;
+
+  // Diamond arm halves (split for a 3D spear look)
+  // base sits at y=pivotR (just outside the pivot), tip at y=-len
+  const armRight = (len) => `M 0 ${-pivotR + 2} L ${armHalfW} 0 L 0 ${-len} Z`;
+  const armLeft  = (len) => `M 0 ${-pivotR + 2} L ${-armHalfW} 0 L 0 ${-len} Z`;
+
+  // Degree ring ticks: 40 total (every 9°), major at every value angle
+  const tickCount = 40;
+  const ticks = Array.from({ length: tickCount }, (_, i) => {
+    const a = i * (360 / tickCount);
+    const rad = a * Math.PI / 180;
+    const isMajor = [0, 72, 144, 216, 288].includes(a);
+    const isMid   = !isMajor && a % 18 === 0;
+    const tickLen = isMajor ? 12 : isMid ? 7 : 4;
+    const mid = (ringIn + ringOut) / 2;
+    const r1 = mid - tickLen / 2;
+    const r2 = mid + tickLen / 2;
+    return {
+      x1: Math.sin(rad) * r1, y1: -Math.cos(rad) * r1,
+      x2: Math.sin(rad) * r2, y2: -Math.cos(rad) * r2,
+      major: isMajor, mid: isMid,
+    };
+  });
 
   return (
     <div>
       <svg viewBox={`0 0 ${size} ${size}`}
-        style={{ display: 'block', width: '100%', maxWidth: 460, margin: '0 auto', overflow: 'visible' }}>
+        style={{ display: 'block', width: '100%', maxWidth: 480, margin: '0 auto', overflow: 'visible' }}>
         <defs>
-          <filter id="petalShadow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2"/>
-            <feOffset dx="0" dy="1.5"/>
+          <filter id="armShadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.8"/>
+            <feOffset dx="0" dy="1.2"/>
             <feComponentTransfer><feFuncA type="linear" slope="0.22"/></feComponentTransfer>
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          {VALUES.map(v => (
-            <linearGradient key={v.id} id={`petal-${v.id}`} x1="50%" y1="0%" x2="50%" y2="100%">
-              <stop offset="0%"   stopColor={v.color} stopOpacity="1"/>
-              <stop offset="100%" stopColor={v.color} stopOpacity="0.7"/>
-            </linearGradient>
-          ))}
+          <radialGradient id="pivotGrad" cx="50%" cy="40%" r="60%">
+            <stop offset="0%"   stopColor="#fff7d9"/>
+            <stop offset="60%"  stopColor="#e9c86e"/>
+            <stop offset="100%" stopColor="#c9a74a"/>
+          </radialGradient>
           <style>{`
-            @keyframes rj-bloom {
-              0%   { transform: scale(0.2) rotate(-20deg); opacity: 0; }
-              70%  { opacity: 1; }
-              100% { transform: scale(1) rotate(0); opacity: 1; }
+            @keyframes rj-sweep {
+              0%   { transform: scaleY(0);  opacity: 0; }
+              60%  { opacity: 1; }
+              100% { transform: scaleY(1);  opacity: 1; }
             }
-            .rj-petal { transform-origin: ${size / 2}px ${size / 2}px; animation: rj-bloom .9s cubic-bezier(.2,.8,.3,1.1) backwards; }
-            ${petals.map((_, i) => `.rj-petal-${i} { animation-delay: ${i * 90}ms; }`).join('\n')}
+            .rj-arm-body { transform-origin: 0 0; animation: rj-sweep .7s cubic-bezier(.2,.8,.3,1.1) backwards; }
+            ${arms.map((_, i) => `.rj-arm-${i} .rj-arm-body { animation-delay: ${i * 70}ms; }`).join('\n')}
+            @keyframes rj-ring-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
+            .rj-ring { animation: rj-ring-fade .5s ease-out backwards; }
           `}</style>
         </defs>
 
-        <g transform={`translate(${size / 2} ${size / 2})`}>
-          {/* Soft bloom ring for reference */}
-          <circle r={outerMax + 8} fill="none" stroke="#e3dcc8" strokeWidth="0.75" strokeDasharray="2 5"/>
+        <g transform={`translate(${cx} ${cy})`}>
+          {/* Degree ring (two concentric circles) */}
+          <g className="rj-ring">
+            <circle r={ringOut + 10} fill="none" stroke="#c9a74a" strokeWidth="0.5" strokeOpacity="0.35"/>
+            <circle r={ringOut}      fill="none" stroke="#c9a74a" strokeWidth="1"/>
+            <circle r={ringIn}       fill="none" stroke="#c9a74a" strokeWidth="0.75"/>
+            {ticks.map((t, i) => (
+              <line key={i}
+                x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
+                stroke={t.major ? '#8a6d2a' : '#c9a74a'}
+                strokeWidth={t.major ? 1.2 : t.mid ? 0.75 : 0.5}
+                strokeOpacity={t.major ? 1 : 0.7}/>
+            ))}
+            {/* Inner dashed guide at max-arm radius */}
+            <circle r={armMax + 4} fill="none" stroke="#c9a74a" strokeOpacity="0.28" strokeWidth="0.5" strokeDasharray="2 4"/>
+          </g>
 
-          {/* Petals (and per-petal labels) */}
-          {petals.map((p, i) => (
-            <g key={p.v.id} className={`rj-petal rj-petal-${i}`}>
-              <g transform={`rotate(${p.angle})`} opacity={p.faded ? 0.32 : 1}>
-                <path d={petalPath(p.outer)}
-                  fill={`url(#petal-${p.v.id})`}
-                  stroke={p.v.color} strokeOpacity="0.5" strokeWidth="0.75"
-                  filter="url(#petalShadow)"/>
-                {/* Inner highlight stroke */}
-                <path d={petalPath(p.outer - 6)}
-                  fill="none" stroke="#fff" strokeOpacity="0.22" strokeWidth="1"/>
+          {/* Compass arms — spear-pointed, split into light/dark halves */}
+          {arms.map((a, i) => (
+            <g key={a.v.id} className={`rj-arm-${i}`}>
+              <g transform={`rotate(${a.angle})`} opacity={a.faded ? 0.35 : 1}>
+                <g className="rj-arm-body">
+                  <path d={armRight(a.tip)} fill={a.v.color} opacity="0.96" filter="url(#armShadow)"/>
+                  <path d={armLeft(a.tip)}  fill={a.v.color} opacity="0.65"/>
+                  {/* centerline spine */}
+                  <line x1="0" y1={-pivotR + 2} x2="0" y2={-a.tip} stroke="#1f1d1a" strokeOpacity="0.25" strokeWidth="0.5"/>
+                  {/* tip marker */}
+                  <circle cx="0" cy={-a.tip} r="2.2" fill={a.v.color} stroke="#fff" strokeWidth="0.75"/>
+                </g>
               </g>
-              <g transform={`translate(${p.labelX} ${p.labelY})`}>
-                <text textAnchor="middle" dominantBaseline="middle" y={-7}
-                  fill={p.v.color} fontSize="10.5" fontWeight="700" letterSpacing="0.16em"
-                  style={{ fontFamily: 'inherit' }}>
-                  {p.v.label.toUpperCase()}
+              {/* Label */}
+              <g transform={`translate(${a.labelX} ${a.labelY})`}>
+                <text textAnchor="middle" dominantBaseline="middle" y={-8}
+                  fill={a.v.color} fontSize="10.5" fontWeight="700" letterSpacing="0.18em">
+                  {a.v.label.toUpperCase()}
                 </text>
-                <text textAnchor="middle" dominantBaseline="middle" y={12}
-                  fill={p.faded ? '#bab4a1' : '#1f1d1a'} fontSize="15" fontWeight="700"
-                  style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
-                  {p.count}
+                <text textAnchor="middle" dominantBaseline="middle" y={10}
+                  fill={a.faded ? '#bab4a1' : '#1f1d1a'} fontSize="15" fontWeight="700"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {a.count}
                 </text>
               </g>
             </g>
           ))}
 
-          {/* Centre disc */}
-          <circle r={innerR} fill="#fff" stroke="#9b1844" strokeWidth="1.25"/>
-          {total > 0 ? (
-            <g>
-              <text textAnchor="middle" dominantBaseline="central" y={-5}
-                fill="#1f1d1a" fontSize="28" fontWeight="700"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
-                {total}
-              </text>
-              <text textAnchor="middle" dominantBaseline="central" y={17}
-                fill="#7c7c7c" fontSize="8.5" fontWeight="700" letterSpacing="0.22em">
-                TAGS
-              </text>
-            </g>
-          ) : (
-            <text textAnchor="middle" dominantBaseline="central"
-              fill="#9b1844" fontSize="9" fontWeight="700" letterSpacing="0.22em">
-              COMPASS
-            </text>
-          )}
+          {/* Central pivot — gold disc with a small magenta compass star */}
+          <circle r={pivotR + 4} fill="none" stroke="#c9a74a" strokeWidth="0.6" strokeOpacity="0.5"/>
+          <circle r={pivotR} fill="url(#pivotGrad)" stroke="#8a6d2a" strokeWidth="1"/>
+          <circle r={pivotR - 5} fill="none" stroke="#8a6d2a" strokeWidth="0.5" strokeOpacity="0.55"/>
+          {/* 4-point star inside pivot */}
+          {[0, 90, 180, 270].map(angle => (
+            <path key={angle} d={`M 0 0 L 3 0 L 0 ${-(pivotR - 6)} L -3 0 Z`}
+              fill="#9b1844" transform={`rotate(${angle})`}/>
+          ))}
+          {/* Secondary smaller diagonal points */}
+          {[45, 135, 225, 315].map(angle => (
+            <path key={angle} d={`M 0 0 L 2 0 L 0 ${-(pivotR - 10)} L -2 0 Z`}
+              fill="#9b1844" opacity="0.6" transform={`rotate(${angle})`}/>
+          ))}
+          <circle r="2.2" fill="#5a0d25"/>
         </g>
       </svg>
 
-      {topPetal ? (
+      {topArm ? (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#5f5a52' }}>
-          Pointing strongest to{' '}
-          <span style={{ color: topPetal.v.color, fontWeight: 700 }}>{topPetal.v.label.toLowerCase()}</span>
-          {' — '}{topPetal.count} tag{topPetal.count === 1 ? '' : 's'} this year.
+          The needle points strongest to{' '}
+          <span style={{ color: topArm.v.color, fontWeight: 700 }}>{topArm.v.label.toLowerCase()}</span>
+          {' — '}{topArm.count} tag{topArm.count === 1 ? '' : 's'} this year{total > 0 ? ` · ${total} total` : ''}.
         </div>
       ) : (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>
