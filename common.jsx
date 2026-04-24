@@ -209,6 +209,12 @@ function TextArea({ value, onChange, placeholder, rows = 4 }) {
 
 function NumberStepper({ value, onChange, min = 0, max = 99, color = '#9b1844', label }) {
   const set = (n) => onChange(Math.min(max, Math.max(min, n)));
+  const onType = (e) => {
+    const raw = e.target.value;
+    if (raw === '') { onChange(0); return; }
+    const n = Number(raw);
+    if (Number.isFinite(n)) set(Math.round(n));
+  };
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
@@ -218,7 +224,19 @@ function NumberStepper({ value, onChange, min = 0, max = 99, color = '#9b1844', 
       {label && <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color }}>{label}</span>}
       <button type="button" onClick={() => set((value || 0) - 1)}
         style={{ width: 30, height: 30, border: 'none', borderRadius: 8, background: 'transparent', color, fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>−</button>
-      <span style={{ minWidth: 28, textAlign: 'center', fontSize: 18, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{value || 0}</span>
+      <input
+        type="number" inputMode="numeric"
+        value={value ?? 0} min={min} max={max}
+        onChange={onType}
+        onFocus={(e) => e.target.select()}
+        className="num-stepper-input"
+        style={{
+          width: 56, textAlign: 'center', fontSize: 18, fontWeight: 700, color,
+          fontVariantNumeric: 'tabular-nums',
+          border: 'none', background: 'transparent', padding: '4px 0',
+          fontFamily: 'inherit', outline: 'none',
+          MozAppearance: 'textfield',
+        }}/>
       <button type="button" onClick={() => set((value || 0) + 1)}
         style={{ width: 30, height: 30, border: 'none', borderRadius: 8, background: color, color: '#fff', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>+</button>
     </div>

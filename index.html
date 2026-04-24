@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Haileybury Reflective Journal</title>
+<title>The Haileybury Odyssey · Reflective Journal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="assets/tokens.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,6 +24,13 @@
     outline-offset: 1px;
     border-color: #9b1844 !important;
   }
+  /* Hide native number spinners — the NumberStepper has its own +/- controls */
+  .num-stepper-input::-webkit-inner-spin-button,
+  .num-stepper-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .num-stepper-input:focus { outline: none !important; }
 </style>
 
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
@@ -35,6 +42,18 @@
 
 <script type="text/babel" src="common.jsx"></script>
 <script type="text/babel" src="app.jsx"></script>
+<script>
+  // Cache-bust JSX files on every load. Browsers ignore script type="text/babel"
+  // (wrong MIME), so they don't fetch it themselves — babel-standalone fetches
+  // it later from the `src` attribute at DOMContentLoaded. Mutating `src` here
+  // runs synchronously during parse, before Babel reads it.
+  (function () {
+    var v = Date.now();
+    document.querySelectorAll('script[type="text/babel"][src]').forEach(function (s) {
+      s.src = s.src + (s.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + v;
+    });
+  })();
+</script>
 <script type="text/babel" data-presets="react">
   ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
