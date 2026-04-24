@@ -193,29 +193,128 @@ function StatCard({ label, value, accent }) {
   );
 }
 
+// A petal-bloom chart. Five teardrop petals radiate from the centre, each
+// value's petal length proportional to how often it has been tagged.
 function ValuesChart({ counts, max }) {
+  const size = 360;
+  const innerR = 38;
+  const outerMax = 132;
+  const outerMin = 56;
+  const halfW = 24;
+  const labelR = outerMax + 28;
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+  const petalPath = (outer) => {
+    const ctrlA = outer - (outer - innerR) * 0.12;
+    const ctrlB = innerR + (outer - innerR) * 0.18;
+    return `M 0 ${-outer} C ${halfW} ${-ctrlA} ${halfW} ${-ctrlB} 0 ${-innerR} C ${-halfW} ${-ctrlB} ${-halfW} ${-ctrlA} 0 ${-outer} Z`;
+  };
+
+  const petals = VALUES.map((v, i) => {
+    const count = counts[v.id] || 0;
+    const ratio = max ? count / max : 0;
+    const outer = outerMin + (outerMax - outerMin) * ratio;
+    const angle = i * 72;
+    const labelX = Math.sin(angle * Math.PI / 180) * labelR;
+    const labelY = -Math.cos(angle * Math.PI / 180) * labelR;
+    return { v, count, outer, angle, labelX, labelY, faded: count === 0 };
+  });
+  const topCount = Math.max(...petals.map(p => p.count));
+  const topPetal = topCount > 0 ? petals.find(p => p.count === topCount) : null;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {VALUES.map(v => {
-        const c = counts[v.id] || 0;
-        const pct = max ? (c / max) * 100 : 0;
-        return (
-          <div key={v.id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 40px', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 999, background: v.color }}/>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{v.label}</span>
-            </div>
-            <div style={{ position: 'relative', height: 14, background: '#efe9d9', borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{
-                position: 'absolute', top: 0, bottom: 0, left: 0,
-                width: `${pct}%`, background: v.color,
-                transition: 'width .3s ease', borderRadius: 999,
-              }}/>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: v.color, fontVariantNumeric: 'tabular-nums' }}>{c}</div>
-          </div>
-        );
-      })}
+    <div>
+      <svg viewBox={`0 0 ${size} ${size}`}
+        style={{ display: 'block', width: '100%', maxWidth: 460, margin: '0 auto', overflow: 'visible' }}>
+        <defs>
+          <filter id="petalShadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2"/>
+            <feOffset dx="0" dy="1.5"/>
+            <feComponentTransfer><feFuncA type="linear" slope="0.22"/></feComponentTransfer>
+            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          {VALUES.map(v => (
+            <linearGradient key={v.id} id={`petal-${v.id}`} x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%"   stopColor={v.color} stopOpacity="1"/>
+              <stop offset="100%" stopColor={v.color} stopOpacity="0.7"/>
+            </linearGradient>
+          ))}
+          <style>{`
+            @keyframes rj-bloom {
+              0%   { transform: scale(0.2) rotate(-20deg); opacity: 0; }
+              70%  { opacity: 1; }
+              100% { transform: scale(1) rotate(0); opacity: 1; }
+            }
+            .rj-petal { transform-origin: ${size / 2}px ${size / 2}px; animation: rj-bloom .9s cubic-bezier(.2,.8,.3,1.1) backwards; }
+            ${petals.map((_, i) => `.rj-petal-${i} { animation-delay: ${i * 90}ms; }`).join('\n')}
+          `}</style>
+        </defs>
+
+        <g transform={`translate(${size / 2} ${size / 2})`}>
+          {/* Soft bloom ring for reference */}
+          <circle r={outerMax + 8} fill="none" stroke="#e3dcc8" strokeWidth="0.75" strokeDasharray="2 5"/>
+
+          {/* Petals (and per-petal labels) */}
+          {petals.map((p, i) => (
+            <g key={p.v.id} className={`rj-petal rj-petal-${i}`}>
+              <g transform={`rotate(${p.angle})`} opacity={p.faded ? 0.32 : 1}>
+                <path d={petalPath(p.outer)}
+                  fill={`url(#petal-${p.v.id})`}
+                  stroke={p.v.color} strokeOpacity="0.5" strokeWidth="0.75"
+                  filter="url(#petalShadow)"/>
+                {/* Inner highlight stroke */}
+                <path d={petalPath(p.outer - 6)}
+                  fill="none" stroke="#fff" strokeOpacity="0.22" strokeWidth="1"/>
+              </g>
+              <g transform={`translate(${p.labelX} ${p.labelY})`}>
+                <text textAnchor="middle" dominantBaseline="middle" y={-7}
+                  fill={p.v.color} fontSize="10.5" fontWeight="700" letterSpacing="0.16em"
+                  style={{ fontFamily: 'inherit' }}>
+                  {p.v.label.toUpperCase()}
+                </text>
+                <text textAnchor="middle" dominantBaseline="middle" y={12}
+                  fill={p.faded ? '#bab4a1' : '#1f1d1a'} fontSize="15" fontWeight="700"
+                  style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.count}
+                </text>
+              </g>
+            </g>
+          ))}
+
+          {/* Centre disc */}
+          <circle r={innerR} fill="#fff" stroke="#9b1844" strokeWidth="1.25"/>
+          {total > 0 ? (
+            <g>
+              <text textAnchor="middle" dominantBaseline="central" y={-5}
+                fill="#1f1d1a" fontSize="28" fontWeight="700"
+                style={{ fontFamily: "'Playfair Display', serif" }}>
+                {total}
+              </text>
+              <text textAnchor="middle" dominantBaseline="central" y={17}
+                fill="#7c7c7c" fontSize="8.5" fontWeight="700" letterSpacing="0.22em">
+                TAGS
+              </text>
+            </g>
+          ) : (
+            <text textAnchor="middle" dominantBaseline="central"
+              fill="#9b1844" fontSize="9" fontWeight="700" letterSpacing="0.22em">
+              BLOOM
+            </text>
+          )}
+        </g>
+      </svg>
+
+      {topPetal ? (
+        <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#5f5a52' }}>
+          Growing most in{' '}
+          <span style={{ color: topPetal.v.color, fontWeight: 700 }}>{topPetal.v.label.toLowerCase()}</span>
+          {' — '}{topPetal.count} tag{topPetal.count === 1 ? '' : 's'} this year.
+        </div>
+      ) : (
+        <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>
+          Tag values on your reflections and your bloom will start to grow.
+        </div>
+      )}
     </div>
   );
 }
