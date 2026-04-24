@@ -30,10 +30,12 @@ function App() {
   const [view, setView] = useState('profile');
 
   const patch = (fn) => setState(fn);
-  const addWeekly   = (e) => patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));
-  const addTutorial = (e) => patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));
-  const removeEntry = (kind, id) => patch(s => ({ ...s, [kind]: s[kind].filter(x => x.id !== id) }));
-  const setPupil    = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
+  const addWeekly      = (e) => patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));
+  const addTutorial    = (e) => patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));
+  const updateWeekly   = (id, e) => patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) }));
+  const updateTutorial = (id, e) => patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) }));
+  const removeEntry    = (kind, id) => patch(s => ({ ...s, [kind]: s[kind].filter(x => x.id !== id) }));
+  const setPupil       = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
 
   return (
     <div style={{
@@ -44,8 +46,8 @@ function App() {
       <NavBar view={view} onNav={setView} pupil={state.pupil}/>
       <main style={{ maxWidth: 1040, margin: '0 auto', padding: '40px 24px 80px' }}>
         {view === 'profile'   && <ProfileView   state={state} onNav={setView} onUpdatePupil={setPupil}/>}
-        {view === 'weekly'    && <WeeklyView    entries={state.weekly}   onAdd={addWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
-        {view === 'tutorial'  && <TutorialView  entries={state.tutorial} onAdd={addTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
+        {view === 'weekly'    && <WeeklyView    entries={state.weekly}   onAdd={addWeekly}   onUpdate={updateWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
+        {view === 'tutorial'  && <TutorialView  entries={state.tutorial} onAdd={addTutorial} onUpdate={updateTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
         {view === 'scrapbook' && <ScrapbookView state={state}/>}
         {view === 'book'      && <BookView      state={state}/>}
       </main>
@@ -502,8 +504,9 @@ function ValuesChart({ counts, max }) {
 }
 
 // ─── Weekly Reflections ───────────────────────────────────────
-function WeeklyView({ entries, onAdd, onDelete }) {
+function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
+  const [editingId, setEditingId] = useState(null);
 
   if (composing) {
     return (
@@ -511,6 +514,18 @@ function WeeklyView({ entries, onAdd, onDelete }) {
         onCancel={entries.length > 0 ? () => setComposing(false) : null}
         onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
     );
+  }
+
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      return (
+        <WeeklyForm
+          initial={entry}
+          onCancel={() => setEditingId(null)}
+          onSave={(patch) => { onUpdate(editingId, patch); setEditingId(null); }}/>
+      );
+    }
   }
 
   return (
@@ -532,14 +547,18 @@ function WeeklyView({ entries, onAdd, onDelete }) {
         <EmptyState label="No reflections yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => <WeeklyCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
+          {entries.map(e => (
+            <WeeklyCard key={e.id} entry={e}
+              onEdit={() => setEditingId(e.id)}
+              onDelete={() => onDelete(e.id)}/>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function WeeklyCard({ entry, onDelete }) {
+function WeeklyCard({ entry, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   return (
     <Card>
@@ -564,6 +583,10 @@ function WeeklyCard({ entry, onDelete }) {
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onEdit}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            Edit
           </button>
           <button onClick={onDelete} title="Delete"
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
@@ -605,15 +628,16 @@ function EmptyState({ label }) {
   );
 }
 
-function WeeklyForm({ onSave, onCancel }) {
-  const [date, setDate]       = useState(todayISO());
-  const [moment, setMoment]   = useState('');
-  const [values, setValues]   = useState([]);
-  const [photo, setPhoto]     = useState(null);
-  const [caption, setCaption] = useState('');
-  const [proud, setProud]     = useState('');
-  const [tricky, setTricky]   = useState('');
-  const [mood, setMood]       = useState('');
+function WeeklyForm({ onSave, onCancel, initial }) {
+  const editing = !!initial;
+  const [date, setDate]       = useState(initial?.date   ?? todayISO());
+  const [moment, setMoment]   = useState(initial?.moment ?? '');
+  const [values, setValues]   = useState(initial?.values ?? []);
+  const [photo, setPhoto]     = useState(initial?.photo  ?? null);
+  const [caption, setCaption] = useState(initial?.caption ?? '');
+  const [proud, setProud]     = useState(initial?.proud  ?? '');
+  const [tricky, setTricky]   = useState(initial?.tricky ?? '');
+  const [mood, setMood]       = useState(initial?.mood   ?? '');
 
   const canSave = moment.trim().length > 0;
   const save = () => {
@@ -628,8 +652,10 @@ function WeeklyForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Reflection"
-      title={<>This week <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in five minutes.</span></>}
+      eyebrow={editing ? 'Edit Reflection' : 'New Reflection'}
+      title={editing
+        ? <>Edit this <span style={{ fontStyle: 'italic', color: '#9b1844' }}>reflection.</span></>
+        : <>This week <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in five minutes.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
@@ -696,13 +722,19 @@ function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>{children}</div>
       </Card>
+      {/* Duplicate save/cancel at the bottom for long forms */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
+        <Button onClick={onSave} disabled={!canSave}>Save</Button>
+      </div>
     </div>
   );
 }
 
 // ─── Long Tutorial Reflections ────────────────────────────────
-function TutorialView({ entries, onAdd, onDelete }) {
+function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
+  const [editingId, setEditingId] = useState(null);
 
   if (composing) {
     return (
@@ -710,6 +742,18 @@ function TutorialView({ entries, onAdd, onDelete }) {
         onCancel={entries.length > 0 ? () => setComposing(false) : null}
         onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
     );
+  }
+
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      return (
+        <TutorialForm
+          initial={entry}
+          onCancel={() => setEditingId(null)}
+          onSave={(patch) => { onUpdate(editingId, patch); setEditingId(null); }}/>
+      );
+    }
   }
 
   const yellowTotal = entries.reduce((n, e) => n + (e.yellowTickets || 0), 0);
@@ -741,7 +785,11 @@ function TutorialView({ entries, onAdd, onDelete }) {
         <EmptyState label="No long tutorials yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => <TutorialCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
+          {entries.map(e => (
+            <TutorialCard key={e.id} entry={e}
+              onEdit={() => setEditingId(e.id)}
+              onDelete={() => onDelete(e.id)}/>
+          ))}
         </div>
       )}
     </div>
@@ -757,7 +805,7 @@ function TicketBadge({ color, tint, label, value }) {
   );
 }
 
-function TutorialCard({ entry, onDelete }) {
+function TutorialCard({ entry, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   return (
     <Card>
@@ -783,6 +831,10 @@ function TutorialCard({ entry, onDelete }) {
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onEdit}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            Edit
           </button>
           <button onClick={onDelete} title="Delete"
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
@@ -811,20 +863,21 @@ function TutorialCard({ entry, onDelete }) {
   );
 }
 
-function TutorialForm({ onSave, onCancel }) {
-  const [date, setDate]               = useState(todayISO());
-  const [term, setTerm]               = useState('Michaelmas');
-  const [title, setTitle]             = useState('');
-  const [story, setStory]             = useState('');
-  const [shift, setShift]             = useState('');
-  const [values, setValues]           = useState([]);
-  const [photo, setPhoto]             = useState(null);
-  const [caption, setCaption]         = useState('');
-  const [wentWell, setWentWell]       = useState('');
-  const [differently, setDifferently] = useState('');
-  const [discuss, setDiscuss]         = useState('');
-  const [yellowTickets, setYellow]    = useState(0);
-  const [blueTickets, setBlue]        = useState(0);
+function TutorialForm({ onSave, onCancel, initial }) {
+  const editing = !!initial;
+  const [date, setDate]               = useState(initial?.date        ?? todayISO());
+  const [term, setTerm]               = useState(initial?.term        ?? 'Michaelmas');
+  const [title, setTitle]             = useState(initial?.title       ?? '');
+  const [story, setStory]             = useState(initial?.story       ?? '');
+  const [shift, setShift]             = useState(initial?.shift       ?? '');
+  const [values, setValues]           = useState(initial?.values      ?? []);
+  const [photo, setPhoto]             = useState(initial?.photo       ?? null);
+  const [caption, setCaption]         = useState(initial?.caption     ?? '');
+  const [wentWell, setWentWell]       = useState(initial?.wentWell    ?? '');
+  const [differently, setDifferently] = useState(initial?.differently ?? '');
+  const [discuss, setDiscuss]         = useState(initial?.discuss     ?? '');
+  const [yellowTickets, setYellow]    = useState(initial?.yellowTickets ?? 0);
+  const [blueTickets, setBlue]        = useState(initial?.blueTickets   ?? 0);
 
   const canSave = title.trim().length > 0 && story.trim().length > 0;
   const save = () => {
@@ -841,8 +894,10 @@ function TutorialForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Long Tutorial"
-      title={<>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>long tutorial.</span></>}
+      eyebrow={editing ? 'Edit Long Tutorial' : 'New Long Tutorial'}
+      title={editing
+        ? <>Edit this <span style={{ fontStyle: 'italic', color: '#9b1844' }}>long tutorial.</span></>
+        : <>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>long tutorial.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
