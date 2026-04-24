@@ -13,23 +13,24 @@ The pupil's journal is framed as a hero's journey. Each tab is a stop along
 the route.
 
 - **The Hero** — the profile / dashboard. Greeting, auto-generated summary
-  of the pupil's year, totals (waypoints, councils, yellow tickets, blue
-  tickets), editable pupil info.
+  of the pupil's year, totals (reflections, long tutorials, yellow tickets,
+  blue tickets), editable pupil info.
 - **The Compass** — a petal chart on the hero page. Each of the five values
   is a teardrop petal that grows as the pupil tags it; the compass turns
   toward whichever direction they're paying most attention to. Total tag
   count sits at the centre.
-- **Waypoints** — quick five-minute entries: a moment worth marking, value
-  tags, optional photo, what they're proud of, something tricky, and a
-  one-word mood.
-- **Councils** — longer reflections to prepare for a tutor meeting: title,
-  what happened, what shifted, values, optional photo, what went well / what
-  they'd do differently, a question to bring to council, and
-  **yellow ticket / blue ticket** counts that roll up onto the hero page.
+- **Reflections** — quick five-minute weekly entries: a moment from the
+  week, value tags, optional photo, what they're proud of, something
+  tricky, and a one-word mood.
+- **Long tutorials** — longer reflections to prepare for a tutor meeting:
+  title, what happened, what shifted, values, optional photo, what went
+  well / what they'd do differently, a question to discuss with the tutor,
+  and **yellow ticket / blue ticket** counts that roll up onto the hero
+  page.
 - **Relics** — every photo the pupil has gathered along the way, laid out
   as a tilted paper-and-tape collage with caption, date, and value tags.
-- **The Saga** — every waypoint and council, bound chronologically and
-  presented as a two-page spread with ← / → navigation. Includes an
+- **The Saga** — every reflection and long tutorial, bound chronologically
+  and presented as a two-page spread with ← / → navigation. Includes an
   **Export to PDF** option that produces a multi-page print-ready document
   with a cover page.
 - **Photos optional everywhere** — uploaded images are stored inline as
