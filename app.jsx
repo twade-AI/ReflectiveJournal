@@ -42,10 +42,12 @@ function App() {
       fontFamily: "'Calluna Sans', 'Lato', system-ui, sans-serif",
     }}>
       <NavBar view={view} onNav={setView} pupil={state.pupil}/>
-      <main style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px 80px' }}>
-        {view === 'profile'  && <ProfileView state={state} onNav={setView} onUpdatePupil={setPupil}/>}
-        {view === 'weekly'   && <WeeklyView   entries={state.weekly}   onAdd={addWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
-        {view === 'tutorial' && <TutorialView entries={state.tutorial} onAdd={addTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
+      <main style={{ maxWidth: 1040, margin: '0 auto', padding: '40px 24px 80px' }}>
+        {view === 'profile'   && <ProfileView   state={state} onNav={setView} onUpdatePupil={setPupil}/>}
+        {view === 'weekly'    && <WeeklyView    entries={state.weekly}   onAdd={addWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
+        {view === 'tutorial'  && <TutorialView  entries={state.tutorial} onAdd={addTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
+        {view === 'scrapbook' && <ScrapbookView state={state}/>}
+        {view === 'book'      && <BookView      state={state}/>}
       </main>
     </div>
   );
@@ -54,9 +56,11 @@ function App() {
 // ─── Nav ──────────────────────────────────────────────────────
 function NavBar({ view, onNav, pupil }) {
   const tabs = [
-    { id: 'profile',  label: 'Profile' },
-    { id: 'weekly',   label: 'Weekly Reflections' },
-    { id: 'tutorial', label: 'Long Tutorial Reflections' },
+    { id: 'profile',   label: 'Profile' },
+    { id: 'weekly',    label: 'Weekly' },
+    { id: 'tutorial',  label: 'Tutorial' },
+    { id: 'scrapbook', label: 'Scrapbook' },
+    { id: 'book',      label: 'Book' },
   ];
   return (
     <header style={{
@@ -64,10 +68,13 @@ function NavBar({ view, onNav, pupil }) {
       background: '#9b1844', color: '#fff',
       borderBottom: '3px solid #ec6608',
     }}>
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em' }}>
-            The Reflective <span style={{ fontStyle: 'italic' }}>Journal</span>
+      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1 }}>
+            The Haileybury <span style={{ fontStyle: 'italic' }}>Odyssey</span>
+          </div>
+          <div style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', fontWeight: 600 }}>
+            Reflective Journal
           </div>
         </div>
         <nav style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
@@ -716,6 +723,127 @@ function TutorialForm({ onSave, onCancel }) {
         </div>
       </div>
     </FormShell>
+  );
+}
+
+// ─── Scrapbook ───────────────────────────────────────────────
+// Photos from all reflections, presented as a tilted collage.
+function ScrapbookView({ state }) {
+  const items = useMemo(() => {
+    const rows = [];
+    state.weekly.forEach(e => {
+      if (e.photo) rows.push({
+        id: e.id, photo: e.photo, caption: e.caption, date: e.date,
+        title: e.moment, values: e.values || [], kind: 'Weekly',
+      });
+    });
+    state.tutorial.forEach(e => {
+      if (e.photo) rows.push({
+        id: e.id, photo: e.photo, caption: e.caption, date: e.date,
+        title: e.title, values: e.values || [], kind: 'Tutorial',
+      });
+    });
+    return rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [state]);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Scrapbook</div>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+          Your year <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in pictures.</span>
+        </h1>
+        <p style={{ fontSize: 15, color: '#5f5a52', marginTop: 12, maxWidth: 560, lineHeight: 1.5 }}>
+          Photos you've added to your reflections, pinned up together.
+        </p>
+      </div>
+
+      {items.length === 0 ? (
+        <EmptyState label="No photos yet. Add a photo to a reflection and it'll appear here."/>
+      ) : (
+        <ScrapbookCollage items={items}/>
+      )}
+    </div>
+  );
+}
+
+// Deterministic pseudo-hash so each photo's tilt + tape colour stay stable across renders.
+function strHash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < (s || '').length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+function ScrapbookCollage({ items }) {
+  const TAPE_COLORS = ['rgba(254,244,168,0.9)', 'rgba(249,208,229,0.9)', 'rgba(210,238,250,0.9)', 'rgba(253,229,208,0.9)'];
+  return (
+    <div style={{
+      columnWidth: 240, columnGap: 28, padding: '10px 6px 40px',
+    }}>
+      {items.map(it => {
+        const h = strHash(it.id);
+        const rotate = ((h % 11) - 5) * 0.6;               // −3° to +3° in 0.6° steps
+        const tape  = TAPE_COLORS[h % TAPE_COLORS.length];
+        const tapeRot = ((h >> 3) % 9) - 4;
+        return (
+          <div key={it.id}
+            style={{
+              display: 'inline-block', width: '100%', marginBottom: 28,
+              background: '#fff', padding: 10, paddingBottom: 12,
+              boxShadow: '0 2px 4px rgba(31,29,26,0.08), 0 10px 24px rgba(31,29,26,0.08)',
+              transform: `rotate(${rotate}deg)`,
+              breakInside: 'avoid', WebkitColumnBreakInside: 'avoid',
+              position: 'relative',
+            }}>
+            {/* Tape strip */}
+            <div aria-hidden style={{
+              position: 'absolute', top: -10, left: '50%',
+              transform: `translateX(-50%) rotate(${tapeRot}deg)`,
+              width: 76, height: 20, background: tape,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+              borderLeft: '1px dashed rgba(0,0,0,0.1)',
+              borderRight: '1px dashed rgba(0,0,0,0.1)',
+            }}/>
+            <img src={it.photo} alt={it.caption || it.title || ''}
+              style={{ display: 'block', width: '100%', borderRadius: 2 }}/>
+            {(it.caption || it.title) && (
+              <div style={{
+                marginTop: 10, padding: '0 4px',
+                fontFamily: "'Playfair Display', serif", fontStyle: 'italic',
+                fontSize: 14.5, color: '#1f1d1a', lineHeight: 1.35,
+              }}>
+                {it.caption || it.title}
+              </div>
+            )}
+            <div style={{ marginTop: 8, padding: '0 4px', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700 }}>
+                {it.kind} · {formatDate(it.date)}
+              </span>
+            </div>
+            {it.values.length > 0 && (
+              <div style={{ marginTop: 6, padding: '0 4px', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {it.values.map(id => VALUE_BY_ID[id] && (
+                  <span key={id} style={{
+                    fontSize: 9.5, padding: '3px 8px', borderRadius: 999,
+                    background: VALUE_BY_ID[id].tint, color: VALUE_BY_ID[id].color,
+                    fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  }}>
+                    {VALUE_BY_ID[id].label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Book view (stub — fleshed out next commit) ──────────────
+function BookView({ state }) {
+  return (
+    <EmptyState label="Book view — coming right up."/>
   );
 }
 
