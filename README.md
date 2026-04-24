@@ -1,25 +1,31 @@
-# Haileybury Reflective Journal
+# The Haileybury Odyssey · Reflective Journal
 
 An interactive reflection app for Key Stage 3 pupils (Years 7–9). Pupils log
 short weekly reflections through the year and write longer "Long Tutorial"
 reflections before they meet their tutor. Each entry can be tagged with the
-five Haileybury values (Courage, Curiosity, Integrity, Kindness, Respect) and
-visualised on their profile.
+five Haileybury values (Courage, Curiosity, Integrity, Kindness, Respect),
+visualised on a profile "bloom", and browsed as a bound book or photo
+scrapbook.
 
 ## Features
 
 - **Profile / dashboard** — greeting, auto-generated summary of the pupil's
-  activity, totals, a values-usage chart showing which values are getting the
-  most attention across the year, and editable pupil info.
+  activity, totals (weekly / tutorial / yellow tickets / blue tickets), and
+  editable pupil info.
+- **Values bloom** — a petal chart on the profile page. Each of the five
+  values is a teardrop petal whose length grows as the pupil tags it. The
+  total tag count sits in the middle.
 - **Weekly reflections** — quick five-minute entries: a moment from the week,
   values tags, optional photo, what they're proud of, something tricky, and a
   one-word mood.
 - **Long tutorial reflections** — longer entries: title, what happened, what
   shifted, values, optional photo, what went well / what they'd do differently,
   a question to discuss with the tutor, and **yellow ticket / blue ticket**
-  counts.
-- **Values visualisation** — a horizontal bar chart on the profile page,
-  colour-coded per value, updated as entries are tagged.
+  counts that roll up onto the profile.
+- **Scrapbook** — every photo the pupil has uploaded, laid out as a tilted
+  paper-and-tape collage with caption, date, and value tags.
+- **Book** — all reflections bound chronologically and presented as a
+  two-page spread with ← / → navigation.
 - **Photos optional everywhere** — uploaded images are stored inline as
   dataURLs; no upload step.
 - **Works offline** — state persists to `localStorage`. No backend yet (see
