@@ -146,6 +146,17 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
   return (
     <div>
+      {/* Odyssey hero */}
+      <div style={{
+        marginBottom: 28, padding: '24px 24px 20px', textAlign: 'center',
+        background: 'linear-gradient(180deg, #fffdf7 0%, #fbf5e4 100%)',
+        border: '1px solid #e3dcc8', borderRadius: 16,
+        boxShadow: '0 1px 3px rgba(31,29,26,0.04)',
+      }}>
+        <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey"
+          style={{ width: '100%', maxWidth: 540, height: 'auto', display: 'block', margin: '0 auto' }}/>
+      </div>
+
       {/* Greeting */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Profile</div>
@@ -913,10 +924,8 @@ function BookPrintable({ entries }) {
     <div className="rj-print">
       <div className="rj-print-page rj-print-cover">
         <div style={{ textAlign: 'center' }}>
-          <img src="assets/logo-magenta.png" alt="Haileybury" className="rj-print-logo"/>
-          <div className="rj-print-eyebrow">A Reflective Journal</div>
-          <h1 className="rj-print-title">The Haileybury <em>Odyssey</em></h1>
-          <div className="rj-print-byline">Reflections, bound.</div>
+          <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey" className="rj-print-hero"/>
+          <div className="rj-print-byline">A Reflective Journal · Reflections, bound.</div>
         </div>
       </div>
       {entries.map(e => (
