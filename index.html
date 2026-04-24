@@ -42,6 +42,18 @@
 
 <script type="text/babel" src="common.jsx"></script>
 <script type="text/babel" src="app.jsx"></script>
+<script>
+  // Cache-bust JSX files on every load. Browsers ignore script type="text/babel"
+  // (wrong MIME), so they don't fetch it themselves — babel-standalone fetches
+  // it later from the `src` attribute at DOMContentLoaded. Mutating `src` here
+  // runs synchronously during parse, before Babel reads it.
+  (function () {
+    var v = Date.now();
+    document.querySelectorAll('script[type="text/babel"][src]').forEach(function (s) {
+      s.src = s.src + (s.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + v;
+    });
+  })();
+</script>
 <script type="text/babel" data-presets="react">
   ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
