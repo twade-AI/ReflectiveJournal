@@ -31,6 +31,82 @@
     margin: 0;
   }
   .num-stepper-input:focus { outline: none !important; }
+
+  /* ── Print: hide the app, show the printable book ── */
+  .rj-print { display: none; }
+  @page { size: A4; margin: 18mm 16mm; }
+  @media print {
+    html, body { background: #fff !important; }
+    body > div#root > div > header,
+    body > div#root > div > main > div > :not(.rj-print) { display: none !important; }
+    /* Unhide the printable */
+    .rj-print { display: block !important; }
+    /* Re-show the Book view's container but only the printable inside it */
+    body > div#root > div > main {
+      max-width: none !important; padding: 0 !important; margin: 0 !important;
+    }
+    body > div#root > div { background: #fff !important; }
+  }
+  .rj-print-page { page-break-after: always; break-after: page;
+    min-height: 260mm; padding: 6mm 0;
+    display: flex; flex-direction: column; }
+  .rj-print-page:last-child { page-break-after: auto; break-after: auto; }
+  .rj-print-cover { justify-content: center; align-items: center;
+    min-height: 260mm; text-align: center; }
+  .rj-print-eyebrow {
+    font-size: 10pt; letter-spacing: 0.32em; text-transform: uppercase;
+    color: #9b1844; font-weight: 700; margin-bottom: 10mm;
+  }
+  .rj-print-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 54pt; font-weight: 700; color: #1f1d1a;
+    margin: 0; line-height: 1.05; letter-spacing: -0.02em;
+  }
+  .rj-print-title em { color: #9b1844; }
+  .rj-print-byline {
+    margin-top: 10mm; font-family: 'Playfair Display', Georgia, serif;
+    font-style: italic; font-size: 13pt; color: #5f5a52;
+  }
+  .rj-print-entry { color: #1f1d1a; font-family: 'Calluna Sans', 'Lato', sans-serif; }
+  .rj-print-meta {
+    font-size: 9pt; letter-spacing: 0.22em; text-transform: uppercase;
+    color: #9b1844; font-weight: 700; margin-bottom: 4mm;
+  }
+  .rj-print-h {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 28pt; font-weight: 700; color: #1f1d1a;
+    margin: 0 0 4mm; line-height: 1.1; letter-spacing: -0.01em;
+  }
+  .rj-print-values { margin-bottom: 6mm; }
+  .rj-print-tag {
+    display: inline-block; padding: 1.2mm 2.5mm; margin: 0 2mm 2mm 0;
+    border: 0.4mm solid currentColor; border-radius: 30pt;
+    font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .rj-print-figure { margin: 4mm 0 6mm; break-inside: avoid; }
+  .rj-print-figure img {
+    max-width: 100%; max-height: 120mm; display: block;
+    border: 0.3mm solid #d4cfc0;
+  }
+  .rj-print-figure figcaption {
+    margin-top: 2mm; font-style: italic; font-size: 10pt; color: #5f5a52;
+  }
+  .rj-print-section { margin-bottom: 6mm; break-inside: avoid; }
+  .rj-print-section-label {
+    font-size: 8.5pt; letter-spacing: 0.22em; text-transform: uppercase;
+    color: #9b1844; font-weight: 700; margin-bottom: 1.5mm;
+  }
+  .rj-print-section-body {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 12pt; color: #1f1d1a; line-height: 1.5; white-space: pre-wrap;
+  }
+  .rj-print-tickets {
+    margin-top: 6mm; padding-top: 3mm; border-top: 0.3mm solid #d4cfc0;
+    font-size: 10pt; color: #3a3835; display: flex; gap: 10mm;
+  }
+  .rj-print-mood {
+    margin-top: 4mm; font-size: 10pt; color: #3a3835;
+  }
 </style>
 
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>

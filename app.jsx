@@ -883,6 +883,9 @@ function BookView({ state }) {
         <EmptyState label="No reflections in your book yet."/>
       ) : (
         <>
+          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="outline" onClick={() => window.print()}>Export to PDF</Button>
+          </div>
           <BookSpread entry={entry}/>
           <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
@@ -891,8 +894,93 @@ function BookView({ state }) {
             </div>
             <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
           </div>
+
+          {/* Print-only layout: all reflections as full pages */}
+          <BookPrintable entries={entries}/>
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Printable book layout (visible only via @media print) ───
+function BookPrintable({ entries }) {
+  return (
+    <div className="rj-print">
+      <div className="rj-print-page rj-print-cover">
+        <div style={{ textAlign: 'center' }}>
+          <div className="rj-print-eyebrow">A Reflective Journal</div>
+          <h1 className="rj-print-title">The Haileybury <em>Odyssey</em></h1>
+          <div className="rj-print-byline">Reflections, bound.</div>
+        </div>
+      </div>
+      {entries.map(e => (
+        <div key={e.id} className="rj-print-page">
+          <PrintEntry entry={e}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PrintEntry({ entry }) {
+  const isTutorial = entry._kind === 'tutorial';
+  return (
+    <div className="rj-print-entry">
+      <div className="rj-print-meta">
+        {isTutorial ? 'Long Tutorial' : 'Weekly'} · {formatDate(entry.date)}
+        {entry.term ? ` · ${entry.term}` : ''}
+      </div>
+      <h2 className="rj-print-h">{entry.title || entry.moment || 'Untitled'}</h2>
+
+      {entry.values?.length > 0 && (
+        <div className="rj-print-values">
+          {entry.values.map(id => VALUE_BY_ID[id] && (
+            <span key={id} className="rj-print-tag" style={{ borderColor: VALUE_BY_ID[id].color, color: VALUE_BY_ID[id].color }}>
+              {VALUE_BY_ID[id].label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {entry.photo && (
+        <figure className="rj-print-figure">
+          <img src={entry.photo} alt=""/>
+          {entry.caption && <figcaption>{entry.caption}</figcaption>}
+        </figure>
+      )}
+
+      {isTutorial ? (
+        <>
+          {entry.story       && <PrintSection label="What happened"           body={entry.story}/>}
+          {entry.shift       && <PrintSection label="What shifted in me"      body={entry.shift}/>}
+          {entry.wentWell    && <PrintSection label="What went well"          body={entry.wentWell}/>}
+          {entry.differently && <PrintSection label="What I'd do differently" body={entry.differently}/>}
+          {entry.discuss     && <PrintSection label="To discuss with tutor"   body={entry.discuss}/>}
+          {(entry.yellowTickets > 0 || entry.blueTickets > 0) && (
+            <div className="rj-print-tickets">
+              {entry.yellowTickets > 0 && <span>Yellow tickets: <b>{entry.yellowTickets}</b></span>}
+              {entry.blueTickets   > 0 && <span>Blue tickets: <b>{entry.blueTickets}</b></span>}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {entry.moment && <PrintSection label="This week"        body={entry.moment}/>}
+          {entry.proud  && <PrintSection label="I'm proud of"     body={entry.proud}/>}
+          {entry.tricky && <PrintSection label="Something tricky" body={entry.tricky}/>}
+          {entry.mood   && <div className="rj-print-mood">Mood this week: <b>{entry.mood}</b></div>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PrintSection({ label, body }) {
+  return (
+    <div className="rj-print-section">
+      <div className="rj-print-section-label">{label}</div>
+      <div className="rj-print-section-body">{body}</div>
     </div>
   );
 }
