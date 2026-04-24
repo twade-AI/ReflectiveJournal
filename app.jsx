@@ -144,59 +144,161 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
     return bits.join(' ');
   }, [pupil, weekly, tutorial, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial]);
 
+  const firstLetter = summary.charAt(0);
+  const restSummary = summary.slice(1);
+
   return (
     <div>
-      {/* Odyssey hero — no frame; blend mode drops the logo's white background into the cream page */}
-      <div style={{ margin: '-16px 0 12px', textAlign: 'center' }}>
+      {/* Odyssey hero — no frame; multiply blends the logo's white background into the parchment */}
+      <div style={{ margin: '-16px 0 0', textAlign: 'center' }}>
         <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey"
           style={{
-            width: '100%', maxWidth: 620, height: 'auto', display: 'block', margin: '0 auto',
+            width: '100%', maxWidth: 640, height: 'auto', display: 'block', margin: '0 auto',
             mixBlendMode: 'multiply',
           }}/>
       </div>
 
-      {/* Greeting */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Hero</div>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-          {pupil.name ? `Hello, ${pupil.name.split(' ')[0]}.` : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
+      <OrnamentDivider/>
+
+      {/* Greeting — drop cap, serif, journal feel */}
+      <div style={{ marginBottom: 8, textAlign: 'center' }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 10 }}>
+          Chapter I · The Hero
+        </div>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+          {pupil.name ? <>Hello, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>{pupil.name.split(' ')[0]}.</span></> : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
         </h1>
-        <p style={{ fontSize: 16, color: '#5f5a52', marginTop: 12, maxWidth: 620, lineHeight: 1.55 }}>
-          {summary}
+      </div>
+
+      {/* Drop-cap summary */}
+      <div style={{ maxWidth: 680, margin: '18px auto 28px', padding: '0 12px' }}>
+        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, color: '#3a3835', lineHeight: 1.65, margin: 0, fontStyle: 'italic', textAlign: 'center' }}>
+          <span style={{
+            float: 'left', fontFamily: "'Playfair Display', serif", fontSize: 54,
+            lineHeight: 0.9, padding: '4px 10px 0 0', color: '#9b1844', fontWeight: 700, fontStyle: 'normal',
+          }}>{firstLetter}</span>
+          {restSummary}
         </p>
+        <div style={{ clear: 'both' }}/>
       </div>
 
       {/* Quick actions */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 32 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8, justifyContent: 'center' }}>
         <Button onClick={() => onNav('weekly')}>+ New reflection</Button>
         <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for long tutorial</Button>
       </div>
 
-      {/* Stats strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Reflections"    value={totalWeekly}   accent="#9b1844"/>
-        <StatCard label="Long tutorials" value={totalTutorial} accent="#9b1844"/>
-        <StatCard label="Yellow tickets" value={yellowTotal}   accent="#e8a935"/>
-        <StatCard label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
+      <OrnamentDivider/>
+
+      {/* Stat seals */}
+      <div style={{ marginBottom: 10 }}>
+        <SectionHeader eyebrow="The Ledger" title="Your year, in numbers."/>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 8 }}>
+        <StatSeal label="Reflections"    value={totalWeekly}   accent="#9b1844"/>
+        <StatSeal label="Long tutorials" value={totalTutorial} accent="#9b1844"/>
+        <StatSeal label="Yellow tickets" value={yellowTotal}   accent="#c98508"/>
+        <StatSeal label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
       </div>
 
-      {/* The Compass */}
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>The Compass</div>
-        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 20 }}>Which way are you growing? Tag a value in a reflection or long tutorial and this compass turns toward it.</div>
-        <ValuesChart counts={valueCounts} max={maxCount}/>
-      </Card>
+      <OrnamentDivider/>
 
-      {/* Pupil info editor */}
-      <Card>
-        <div style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 16 }}>About me</div>
+      {/* The Compass — framed card */}
+      <div style={{ marginBottom: 10 }}>
+        <SectionHeader eyebrow="Chapter II · The Compass" title="Which way are you growing?"/>
+      </div>
+      <FramedCard style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', textAlign: 'center', marginBottom: 14 }}>
+          Tag a value on a reflection or long tutorial and the needle turns toward it.
+        </div>
+        <ValuesChart counts={valueCounts} max={maxCount}/>
+      </FramedCard>
+
+      <OrnamentDivider/>
+
+      {/* About me — card of ownership */}
+      <div style={{ marginBottom: 10 }}>
+        <SectionHeader eyebrow="Chapter III · The Hero's Card" title="This journal belongs to…"/>
+      </div>
+      <FramedCard>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
           <Field label="Name"><TextInput value={pupil.name}  onChange={(v) => onUpdatePupil({ name: v })}  placeholder="Your name"/></Field>
           <Field label="Year"><TextInput value={pupil.year}  onChange={(v) => onUpdatePupil({ year: v })}  placeholder="e.g. 8"/></Field>
           <Field label="House"><TextInput value={pupil.house} onChange={(v) => onUpdatePupil({ house: v })} placeholder="House name"/></Field>
           <Field label="Tutor"><TextInput value={pupil.tutor} onChange={(v) => onUpdatePupil({ tutor: v })} placeholder="Tutor's name"/></Field>
         </div>
-      </Card>
+      </FramedCard>
+    </div>
+  );
+}
+
+// ─── Journal ornaments ───────────────────────────────────────────
+// Flourished divider between sections — thin gold lines meeting at a central compass rose.
+function OrnamentDivider({ color = '#c9a74a' }) {
+  return (
+    <div style={{ margin: '34px 0 30px', display: 'flex', justifyContent: 'center' }}>
+      <svg width="420" height="24" viewBox="0 0 420 24" style={{ maxWidth: '100%' }} aria-hidden="true">
+        {/* flanking lines */}
+        <line x1="0"   y1="12" x2="176" y2="12" stroke={color} strokeWidth="0.75" opacity="0.9"/>
+        <line x1="244" y1="12" x2="420" y2="12" stroke={color} strokeWidth="0.75" opacity="0.9"/>
+        {/* inner dots */}
+        <circle cx="170" cy="12" r="1.5" fill={color}/>
+        <circle cx="250" cy="12" r="1.5" fill={color}/>
+        {/* flourish leaves */}
+        <path d="M 180 12 Q 192 4 204 12 Q 192 20 180 12 Z" fill={color} opacity="0.35"/>
+        <path d="M 240 12 Q 228 4 216 12 Q 228 20 240 12 Z" fill={color} opacity="0.35"/>
+        {/* central compass rose */}
+        <g transform="translate(210 12)">
+          <circle r="8" fill="none" stroke={color} strokeWidth="0.75"/>
+          <circle r="5" fill="none" stroke={color} strokeWidth="0.5" opacity="0.6"/>
+          <path d="M 0 -9 L 1.2 0 L 0 9 L -1.2 0 Z" fill={color}/>
+          <path d="M -9 0 L 0 1.2 L 9 0 L 0 -1.2 Z" fill={color}/>
+          <path d="M -6 -6 L 0.8 -0.8 L 6 6 L -0.8 0.8 Z" fill={color} opacity="0.5"/>
+          <path d="M -6 6 L 0.8 0.8 L 6 -6 L -0.8 -0.8 Z" fill={color} opacity="0.5"/>
+          <circle r="1.2" fill={color}/>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+// Chapter-style section header — small gold eyebrow + serif title, centred.
+function SectionHeader({ eyebrow, title }) {
+  return (
+    <div style={{ textAlign: 'center', marginBottom: 18 }}>
+      <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 8 }}>{eyebrow}</div>
+      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+// A card with gold corner flourishes — feels like a framed page.
+function FramedCard({ children, style }) {
+  const cornerSize = 20;
+  const Corner = ({ rotate, x, y }) => (
+    <svg width={cornerSize} height={cornerSize} viewBox="0 0 24 24"
+      style={{ position: 'absolute', [x]: -6, [y]: -6, transform: `rotate(${rotate}deg)`, pointerEvents: 'none' }}>
+      <path d="M 22 2 L 14 2 M 22 2 L 22 10 M 22 2 Q 16 4 14 10" fill="none" stroke="#c9a74a" strokeWidth="1.2" strokeLinecap="round"/>
+      <circle cx="22" cy="2" r="1.6" fill="#c9a74a"/>
+    </svg>
+  );
+  return (
+    <div style={{
+      position: 'relative',
+      background: 'linear-gradient(180deg, rgba(255,253,247,0.92) 0%, rgba(251,245,228,0.92) 100%)',
+      border: '1px solid #d9c78a',
+      borderRadius: 10,
+      padding: 24,
+      boxShadow: '0 1px 3px rgba(31,29,26,0.04), inset 0 0 0 1px rgba(255,255,255,0.4)',
+      ...style,
+    }}>
+      <Corner rotate="0"   x="left"  y="top"/>
+      <Corner rotate="90"  x="right" y="top"/>
+      <Corner rotate="270" x="left"  y="bottom"/>
+      <Corner rotate="180" x="right" y="bottom"/>
+      {children}
     </div>
   );
 }
@@ -209,6 +311,32 @@ function StatCard({ label, value, accent }) {
     }}>
       <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 36, fontWeight: 700, color: accent, lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 10.5, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 600, marginTop: 8 }}>{label}</div>
+    </div>
+  );
+}
+
+// Stat "seal" — parchment fill, gold double-ring frame, serif tabular numeral.
+function StatSeal({ label, value, accent }) {
+  return (
+    <div style={{
+      position: 'relative',
+      background: 'linear-gradient(180deg, #fffdf4 0%, #f6ead0 100%)',
+      border: '1.25px solid #c9a74a',
+      borderRadius: 10,
+      padding: '22px 16px 18px',
+      textAlign: 'center',
+      outline: '1px solid #c9a74a',
+      outlineOffset: 3,
+      boxShadow: '0 2px 8px rgba(155,124,50,0.1)',
+    }}>
+      <div style={{
+        fontFamily: "'Playfair Display', serif", fontSize: 46, fontWeight: 700,
+        color: accent, lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+      }}>{value}</div>
+      <div style={{
+        marginTop: 10, fontSize: 9.5, letterSpacing: '0.26em', textTransform: 'uppercase',
+        color: '#8a6d2a', fontWeight: 700,
+      }}>{label}</div>
     </div>
   );
 }
