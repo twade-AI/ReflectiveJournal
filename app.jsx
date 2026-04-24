@@ -419,4 +419,205 @@ function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
   );
 }
 
+// ─── Long Tutorial Reflections ────────────────────────────────
+function TutorialView({ entries, onAdd, onDelete }) {
+  const [composing, setComposing] = useState(entries.length === 0);
+
+  if (composing) {
+    return (
+      <TutorialForm
+        onCancel={entries.length > 0 ? () => setComposing(false) : null}
+        onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
+    );
+  }
+
+  const yellowTotal = entries.reduce((n, e) => n + (e.yellowTickets || 0), 0);
+  const blueTotal   = entries.reduce((n, e) => n + (e.blueTickets   || 0), 0);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Long Tutorial Reflections</div>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+            Before you meet your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>tutor.</span>
+          </h1>
+          <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
+            A longer reflection to prep for a tutorial. Log your yellow and blue tickets too — they're part of the story.
+          </p>
+        </div>
+        <Button onClick={() => setComposing(true)}>+ New tutorial reflection</Button>
+      </div>
+
+      {(yellowTotal + blueTotal) > 0 && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <TicketBadge color="#e8a935" tint="#fdeecb" label="Yellow tickets (total)" value={yellowTotal}/>
+          <TicketBadge color="#2a2b7c" tint="#d4d5e5" label="Blue tickets (total)"   value={blueTotal}/>
+        </div>
+      )}
+
+      {entries.length === 0 ? (
+        <EmptyState label="No tutorial reflections yet."/>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {entries.map(e => <TutorialCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TicketBadge({ color, tint, label, value }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 999, background: tint, border: `1.5px solid ${color}` }}>
+      <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
+      <span style={{ fontSize: 10.5, letterSpacing: '0.16em', textTransform: 'uppercase', color, fontWeight: 700 }}>{label}</span>
+    </div>
+  );
+}
+
+function TutorialCard({ entry, onDelete }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>
+            {entry.term ? `${entry.term} · ` : ''}{formatDate(entry.date)}
+          </div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: '#1f1d1a', lineHeight: 1.2, marginBottom: 10 }}>
+            {entry.title || 'Untitled'}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+          </div>
+          {(entry.yellowTickets > 0 || entry.blueTickets > 0) && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              {entry.yellowTickets > 0 && <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: '#fdeecb', color: '#c98508' }}>{entry.yellowTickets} yellow</span>}
+              {entry.blueTickets   > 0 && <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: '#d4d5e5', color: '#2a2b7c' }}>{entry.blueTickets} blue</span>}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => setOpen(o => !o)}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onDelete} title="Delete"
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
+            {Icons.trash}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #efe9d9', display: 'grid', gridTemplateColumns: entry.photo ? '180px 1fr' : '1fr', gap: 18 }}>
+          {entry.photo && (
+            <div>
+              <img src={entry.photo} alt="" style={{ width: 180, height: 140, objectFit: 'cover', borderRadius: 8 }}/>
+              {entry.caption && <div style={{ marginTop: 6, fontSize: 12, fontStyle: 'italic', color: '#7c7c7c' }}>{entry.caption}</div>}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {entry.story    && <DetailRow label="What happened"           color="#9b1844" body={entry.story}/>}
+            {entry.shift    && <DetailRow label="What shifted in me"      color="#ec6608" body={entry.shift}/>}
+            {entry.wentWell && <DetailRow label="What went well"          color="#009870" body={entry.wentWell}/>}
+            {entry.differently && <DetailRow label="What I'd do differently" color="#ec6608" body={entry.differently}/>}
+            {entry.discuss  && <DetailRow label="To discuss with tutor"   color="#9b1844" body={entry.discuss}/>}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function TutorialForm({ onSave, onCancel }) {
+  const [date, setDate]               = useState(todayISO());
+  const [term, setTerm]               = useState('Michaelmas');
+  const [title, setTitle]             = useState('');
+  const [story, setStory]             = useState('');
+  const [shift, setShift]             = useState('');
+  const [values, setValues]           = useState([]);
+  const [photo, setPhoto]             = useState(null);
+  const [caption, setCaption]         = useState('');
+  const [wentWell, setWentWell]       = useState('');
+  const [differently, setDifferently] = useState('');
+  const [discuss, setDiscuss]         = useState('');
+  const [yellowTickets, setYellow]    = useState(0);
+  const [blueTickets, setBlue]        = useState(0);
+
+  const canSave = title.trim().length > 0 && story.trim().length > 0;
+  const save = () => {
+    if (!canSave) return;
+    onSave({
+      kind: 'tutorial', date, term,
+      title: title.trim(), story: story.trim(), shift: shift.trim(),
+      values,
+      photo, caption: caption.trim(),
+      wentWell: wentWell.trim(), differently: differently.trim(), discuss: discuss.trim(),
+      yellowTickets: Number(yellowTickets) || 0, blueTickets: Number(blueTickets) || 0,
+    });
+  };
+
+  return (
+    <FormShell
+      eyebrow="New Tutorial Reflection"
+      title={<>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>tutorial.</span></>}
+      onCancel={onCancel}
+      onSave={save}
+      canSave={canSave}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+        <Field label="Date"><TextInput type="date" value={date} onChange={setDate}/></Field>
+        <Field label="Term">
+          <select value={term} onChange={(e) => setTerm(e.target.value)}
+            style={{ width: '100%', padding: '11px 14px', border: '1px solid #e3dcc8', borderRadius: 8, fontSize: 15, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a' }}>
+            <option>Michaelmas</option><option>Lent</option><option>Summer</option>
+          </select>
+        </Field>
+      </div>
+
+      <Field label="Title" hint="Give this reflection a name.">
+        <TextInput value={title} onChange={setTitle} placeholder="e.g. The Community Garden Project"/>
+      </Field>
+
+      <Field label="What happened" hint="Tell the story. Setting, people, choice points.">
+        <TextArea value={story} onChange={setStory} rows={6}/>
+      </Field>
+
+      <Field label="What shifted in me" hint="A moment something clicked, or a view changed.">
+        <TextArea value={shift} onChange={setShift} rows={4}/>
+      </Field>
+
+      <Field label="Values this touches">
+        <ValuePicker selected={values} onChange={setValues}/>
+      </Field>
+
+      <Field label="Photo or sketch (optional)">
+        <PhotoUpload value={photo} onChange={setPhoto} caption={caption} onCaption={setCaption}/>
+      </Field>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+        <Field label="What went well">
+          <TextArea value={wentWell} onChange={setWentWell} rows={3}/>
+        </Field>
+        <Field label="What I'd do differently">
+          <TextArea value={differently} onChange={setDifferently} rows={3}/>
+        </Field>
+      </div>
+
+      <Field label="To discuss with my tutor" hint="A question you want to bring into the meeting.">
+        <TextArea value={discuss} onChange={setDiscuss} rows={3}/>
+      </Field>
+
+      <div>
+        <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 4 }}>Tickets this term</div>
+        <div style={{ fontSize: 12.5, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 12 }}>How many yellow / blue tickets have you picked up since your last tutorial?</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+          <NumberStepper label="Yellow tickets" value={yellowTickets} onChange={setYellow} color="#c98508"/>
+          <NumberStepper label="Blue tickets"   value={blueTickets}   onChange={setBlue}   color="#2a2b7c"/>
+        </div>
+      </div>
+    </FormShell>
+  );
+}
+
 Object.assign(window, { App });
