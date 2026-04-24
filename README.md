@@ -1,44 +1,63 @@
 # Haileybury Reflective Journal
 
-A digital workbook prototype for pupils to reflect on their progress and
-achievements across the year. Designed for GoodNotes annotation; A4 portrait.
+An interactive reflection app for Key Stage 3 pupils (Years 7–9). Pupils log
+short weekly reflections through the year and write longer "Long Tutorial"
+reflections before they meet their tutor. Each entry can be tagged with the
+five Haileybury values (Courage, Curiosity, Integrity, Kindness, Respect) and
+visualised on their profile.
 
-Three age-band variants:
+## Features
 
-- **Key Stage 3** — Years 7–9 (ages 11–14). Warmer, scrapbook-feel, more
-  guided prompts.
-- **Key Stage 4** — Years 10–11 (ages 14–15). Editorial, cream paper,
-  magenta accents. Introduces "for tutorial" pages.
-- **Sixth Form** — Years 12–13 (ages 16–18). Minimalist essay-style, serif
-  typography, generous whitespace.
-
-Each band ships with five spreads: Cover, Introduction, Reflection entry
-(blank + filled), Weekly / termly check-in, End-of-term / year review. The
-Haileybury values — Courage, Curiosity, Integrity, Kindness, Respect — run
-through every page as tags and prompts.
+- **Profile / dashboard** — greeting, auto-generated summary of the pupil's
+  activity, totals, a values-usage chart showing which values are getting the
+  most attention across the year, and editable pupil info.
+- **Weekly reflections** — quick five-minute entries: a moment from the week,
+  values tags, optional photo, what they're proud of, something tricky, and a
+  one-word mood.
+- **Long tutorial reflections** — longer entries: title, what happened, what
+  shifted, values, optional photo, what went well / what they'd do differently,
+  a question to discuss with the tutor, and **yellow ticket / blue ticket**
+  counts.
+- **Values visualisation** — a horizontal bar chart on the profile page,
+  colour-coded per value, updated as entries are tagged.
+- **Photos optional everywhere** — uploaded images are stored inline as
+  dataURLs; no upload step.
+- **Works offline** — state persists to `localStorage`. No backend yet (see
+  below).
 
 ## Running
 
-Open `Reflective Journal.html` in a modern browser. The prototype loads
-React, ReactDOM and Babel from CDN and transpiles the JSX files on the
-fly — no build step required. Pan/zoom with trackpad, click an artboard to
-focus, press `←/→` to move between pages and `↑/↓` between age bands.
+Open `index.html` in a modern browser. The app loads React and Babel from CDN
+and transpiles the JSX on the fly — no build step required.
 
-A floating **Tweaks** panel (bottom-right) lets you switch age group,
-writing surface (ruled / dotted / blank), and toggle photo slots and
-filled-sample content.
+For best results serve over HTTP so the browser can load the JSX files with
+the correct MIME type:
+
+```
+python3 -m http.server 8000
+# then open http://localhost:8000/
+```
+
+## Backend — future
+
+Everything currently lives in the browser's `localStorage`, which means a
+pupil on a library iPad won't see what they wrote on their laptop, and none
+of the data is shared with the tutor automatically. The next step is a
+backend (accounts, cloud storage, tutor view). The data model in `app.jsx`
+(`weekly[]`, `tutorial[]`, `pupil`) is already shaped in a way that will port
+cleanly to a database.
+
+The profile-page summary is currently a rule-based rollup of the pupil's data
+(entry counts, most-used value, most recent reflection title). With a backend
+in place, it can be upgraded to an LLM-generated narrative.
 
 ## File map
 
 | File | Purpose |
 | --- | --- |
-| `Reflective Journal.html` | Entry point; mounts `<App/>` and the Tweaks panel. |
-| `design-canvas.jsx` | Figma-ish pan/zoom canvas with artboards, reorder, focus overlay. |
-| `tweaks-panel.jsx` | Floating tweaks panel and form controls. |
-| `journal-common.jsx` | Shared primitives — A4 page, values, photo slot, writing surface, etc. |
-| `journal-ks3.jsx` | KS3 pages (Cover, How-to-use, Entry, Check-in, Term review). |
-| `journal-ks4.jsx` | KS4 pages. |
-| `journal-ks5.jsx` | Sixth Form pages (Cover, Prologue, Entry part 1 & 2, Year review). |
+| `index.html` | Entry point; mounts `<App/>`. |
+| `common.jsx` | Shared primitives — VALUES palette, ValueTag, ValuePicker, PhotoUpload, form inputs, NumberStepper, Button, Card, icons, date helpers. |
+| `app.jsx` | App shell, nav, `useJournal` storage hook, Profile / Weekly / Tutorial views, forms. |
 | `assets/tokens.css` | Haileybury brand tokens (colours, typography, spacing). |
 | `assets/fonts/` | Calluna Sans (brand typeface). |
 | `assets/logo-*.png` | School logos in magenta / white / black. |
