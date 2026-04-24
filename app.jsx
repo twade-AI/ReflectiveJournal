@@ -840,10 +840,157 @@ function ScrapbookCollage({ items }) {
   );
 }
 
-// ─── Book view (stub — fleshed out next commit) ──────────────
+// ─── Book view ───────────────────────────────────────────────
+// Reads all reflections as a chronological bound book, one page-spread
+// at a time. Left page = context (date, kind, values, optional photo).
+// Right page = body. ← / → navigates.
 function BookView({ state }) {
+  const entries = useMemo(() => {
+    const all = [
+      ...state.weekly.map(e => ({ ...e, _kind: 'weekly' })),
+      ...state.tutorial.map(e => ({ ...e, _kind: 'tutorial' })),
+    ];
+    return all.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }, [state]);
+  const total = entries.length;
+  const [index, setIndex] = useState(0);
+  const clampedIndex = Math.min(index, Math.max(0, total - 1));
+  const entry = entries[clampedIndex];
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      if (e.key === 'ArrowLeft'  && clampedIndex > 0)         setIndex(clampedIndex - 1);
+      if (e.key === 'ArrowRight' && clampedIndex < total - 1) setIndex(clampedIndex + 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [clampedIndex, total]);
+
   return (
-    <EmptyState label="Book view — coming right up."/>
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Book</div>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+          Your reflections, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
+        </h1>
+        <p style={{ fontSize: 15, color: '#5f5a52', marginTop: 12, maxWidth: 600, lineHeight: 1.5 }}>
+          Every reflection you've written, in order. Use the arrow keys or the buttons to turn the page.
+        </p>
+      </div>
+
+      {total === 0 ? (
+        <EmptyState label="No reflections in your book yet."/>
+      ) : (
+        <>
+          <BookSpread entry={entry}/>
+          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
+            <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              Page {clampedIndex + 1} of {total}
+            </div>
+            <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function BookSpread({ entry }) {
+  const isTutorial = entry._kind === 'tutorial';
+  const pageBg = 'linear-gradient(180deg, #fdf6e3 0%, #f7f0d8 100%)';
+  return (
+    <div style={{
+      position: 'relative',
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1fr) 16px minmax(0, 1fr)',
+      borderRadius: 14, overflow: 'hidden',
+      boxShadow: '0 10px 30px rgba(31,29,26,0.12), 0 2px 4px rgba(31,29,26,0.05)',
+      background: '#c98508',
+    }}>
+      {/* Left page */}
+      <div style={{
+        background: pageBg, padding: '36px 34px 36px 38px',
+        minHeight: 520,
+        borderRight: '1px solid rgba(155,24,68,0.08)',
+      }}>
+        <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>
+          {isTutorial ? 'Long Tutorial' : 'Weekly'} · {formatDate(entry.date)}
+          {entry.term ? ` · ${entry.term}` : ''}
+        </div>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: '#1f1d1a', lineHeight: 1.15, letterSpacing: '-0.01em', marginBottom: 18 }}>
+          {entry.title || entry.moment || 'Untitled'}
+        </div>
+
+        {entry.photo && (
+          <img src={entry.photo} alt=""
+            style={{ width: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(31,29,26,0.1)', marginBottom: 12, aspectRatio: '4/3', objectFit: 'cover' }}/>
+        )}
+        {entry.caption && (
+          <div style={{ fontSize: 13, fontStyle: 'italic', color: '#5f5a52', textAlign: 'center', marginBottom: 16 }}>{entry.caption}</div>
+        )}
+
+        {entry.values?.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 9.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, marginBottom: 8 }}>Values</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {entry.values.map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            </div>
+          </div>
+        )}
+
+        {isTutorial && (entry.yellowTickets > 0 || entry.blueTickets > 0) && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            {entry.yellowTickets > 0 && <span style={{ fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: '#fdeecb', color: '#c98508' }}>{entry.yellowTickets} yellow</span>}
+            {entry.blueTickets   > 0 && <span style={{ fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: '#d4d5e5', color: '#2a2b7c' }}>{entry.blueTickets} blue</span>}
+          </div>
+        )}
+
+        {entry.mood && (
+          <div>
+            <div style={{ fontSize: 9.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, marginBottom: 6 }}>Mood</div>
+            <span style={{ padding: '5px 12px', borderRadius: 999, border: '1.5px solid #ec6608', background: '#fde5d0', color: '#ec6608', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{entry.mood}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Spine */}
+      <div style={{
+        background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
+      }}/>
+
+      {/* Right page */}
+      <div style={{
+        background: pageBg, padding: '36px 38px 36px 34px',
+        minHeight: 520, display: 'flex', flexDirection: 'column', gap: 18,
+      }}>
+        {isTutorial ? (
+          <>
+            {entry.story       && <BookSection label="What happened"           body={entry.story}/>}
+            {entry.shift       && <BookSection label="What shifted in me"      body={entry.shift}/>}
+            {entry.wentWell    && <BookSection label="What went well"          body={entry.wentWell}/>}
+            {entry.differently && <BookSection label="What I'd do differently" body={entry.differently}/>}
+            {entry.discuss     && <BookSection label="To discuss with tutor"   body={entry.discuss}/>}
+          </>
+        ) : (
+          <>
+            {entry.moment && <BookSection label="This week"       body={entry.moment}/>}
+            {entry.proud  && <BookSection label="I'm proud of"    body={entry.proud}  color="#ec6608"/>}
+            {entry.tricky && <BookSection label="Something tricky" body={entry.tricky} color="#009fe3"/>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BookSection({ label, body, color = '#9b1844' }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color, fontWeight: 700, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, color: '#1f1d1a', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{body}</div>
+    </div>
   );
 }
 
