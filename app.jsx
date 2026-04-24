@@ -30,10 +30,12 @@ function App() {
   const [view, setView] = useState('profile');
 
   const patch = (fn) => setState(fn);
-  const addWeekly   = (e) => patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));
-  const addTutorial = (e) => patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));
-  const removeEntry = (kind, id) => patch(s => ({ ...s, [kind]: s[kind].filter(x => x.id !== id) }));
-  const setPupil    = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
+  const addWeekly      = (e) => patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));
+  const addTutorial    = (e) => patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));
+  const updateWeekly   = (id, e) => patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) }));
+  const updateTutorial = (id, e) => patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) }));
+  const removeEntry    = (kind, id) => patch(s => ({ ...s, [kind]: s[kind].filter(x => x.id !== id) }));
+  const setPupil       = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
 
   return (
     <div style={{
@@ -44,8 +46,8 @@ function App() {
       <NavBar view={view} onNav={setView} pupil={state.pupil}/>
       <main style={{ maxWidth: 1040, margin: '0 auto', padding: '40px 24px 80px' }}>
         {view === 'profile'   && <ProfileView   state={state} onNav={setView} onUpdatePupil={setPupil}/>}
-        {view === 'weekly'    && <WeeklyView    entries={state.weekly}   onAdd={addWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
-        {view === 'tutorial'  && <TutorialView  entries={state.tutorial} onAdd={addTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
+        {view === 'weekly'    && <WeeklyView    entries={state.weekly}   onAdd={addWeekly}   onUpdate={updateWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
+        {view === 'tutorial'  && <TutorialView  entries={state.tutorial} onAdd={addTutorial} onUpdate={updateTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
         {view === 'scrapbook' && <ScrapbookView state={state}/>}
         {view === 'book'      && <BookView      state={state}/>}
       </main>
@@ -144,59 +146,161 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
     return bits.join(' ');
   }, [pupil, weekly, tutorial, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial]);
 
+  const firstLetter = summary.charAt(0);
+  const restSummary = summary.slice(1);
+
   return (
     <div>
-      {/* Odyssey hero — no frame; blend mode drops the logo's white background into the cream page */}
-      <div style={{ margin: '-16px 0 12px', textAlign: 'center' }}>
+      {/* Odyssey hero — no frame; multiply blends the logo's white background into the parchment */}
+      <div style={{ margin: '-16px 0 0', textAlign: 'center' }}>
         <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey"
           style={{
-            width: '100%', maxWidth: 620, height: 'auto', display: 'block', margin: '0 auto',
+            width: '100%', maxWidth: 640, height: 'auto', display: 'block', margin: '0 auto',
             mixBlendMode: 'multiply',
           }}/>
       </div>
 
-      {/* Greeting */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Hero</div>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-          {pupil.name ? `Hello, ${pupil.name.split(' ')[0]}.` : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
+      <OrnamentDivider/>
+
+      {/* Greeting — drop cap, serif, journal feel */}
+      <div style={{ marginBottom: 8, textAlign: 'center' }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 10 }}>
+          Chapter I · The Hero
+        </div>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+          {pupil.name ? <>Hello, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>{pupil.name.split(' ')[0]}.</span></> : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
         </h1>
-        <p style={{ fontSize: 16, color: '#5f5a52', marginTop: 12, maxWidth: 620, lineHeight: 1.55 }}>
-          {summary}
+      </div>
+
+      {/* Drop-cap summary */}
+      <div style={{ maxWidth: 680, margin: '18px auto 28px', padding: '0 12px' }}>
+        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, color: '#3a3835', lineHeight: 1.65, margin: 0, fontStyle: 'italic', textAlign: 'center' }}>
+          <span style={{
+            float: 'left', fontFamily: "'Playfair Display', serif", fontSize: 54,
+            lineHeight: 0.9, padding: '4px 10px 0 0', color: '#9b1844', fontWeight: 700, fontStyle: 'normal',
+          }}>{firstLetter}</span>
+          {restSummary}
         </p>
+        <div style={{ clear: 'both' }}/>
       </div>
 
       {/* Quick actions */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 32 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8, justifyContent: 'center' }}>
         <Button onClick={() => onNav('weekly')}>+ New reflection</Button>
         <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for long tutorial</Button>
       </div>
 
-      {/* Stats strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Reflections"    value={totalWeekly}   accent="#9b1844"/>
-        <StatCard label="Long tutorials" value={totalTutorial} accent="#9b1844"/>
-        <StatCard label="Yellow tickets" value={yellowTotal}   accent="#e8a935"/>
-        <StatCard label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
+      <OrnamentDivider/>
+
+      {/* Stat seals */}
+      <div style={{ marginBottom: 10 }}>
+        <SectionHeader eyebrow="The Ledger" title="Your year, in numbers."/>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 8 }}>
+        <StatSeal label="Reflections"    value={totalWeekly}   accent="#9b1844"/>
+        <StatSeal label="Long tutorials" value={totalTutorial} accent="#9b1844"/>
+        <StatSeal label="Yellow tickets" value={yellowTotal}   accent="#c98508"/>
+        <StatSeal label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
       </div>
 
-      {/* The Compass */}
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>The Compass</div>
-        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 20 }}>Which way are you growing? Tag a value in a reflection or long tutorial and this compass turns toward it.</div>
-        <ValuesChart counts={valueCounts} max={maxCount}/>
-      </Card>
+      <OrnamentDivider/>
 
-      {/* Pupil info editor */}
-      <Card>
-        <div style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 16 }}>About me</div>
+      {/* The Compass — framed card */}
+      <div style={{ marginBottom: 10 }}>
+        <SectionHeader eyebrow="Chapter II · The Compass" title="Which way are you growing?"/>
+      </div>
+      <FramedCard style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', textAlign: 'center', marginBottom: 14 }}>
+          Tag a value on a reflection or long tutorial and the needle turns toward it.
+        </div>
+        <ValuesChart counts={valueCounts} max={maxCount}/>
+      </FramedCard>
+
+      <OrnamentDivider/>
+
+      {/* About me — card of ownership */}
+      <div style={{ marginBottom: 10 }}>
+        <SectionHeader eyebrow="Chapter III · The Hero's Card" title="This journal belongs to…"/>
+      </div>
+      <FramedCard>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
           <Field label="Name"><TextInput value={pupil.name}  onChange={(v) => onUpdatePupil({ name: v })}  placeholder="Your name"/></Field>
           <Field label="Year"><TextInput value={pupil.year}  onChange={(v) => onUpdatePupil({ year: v })}  placeholder="e.g. 8"/></Field>
           <Field label="House"><TextInput value={pupil.house} onChange={(v) => onUpdatePupil({ house: v })} placeholder="House name"/></Field>
           <Field label="Tutor"><TextInput value={pupil.tutor} onChange={(v) => onUpdatePupil({ tutor: v })} placeholder="Tutor's name"/></Field>
         </div>
-      </Card>
+      </FramedCard>
+    </div>
+  );
+}
+
+// ─── Journal ornaments ───────────────────────────────────────────
+// Flourished divider between sections — thin gold lines meeting at a central compass rose.
+function OrnamentDivider({ color = '#c9a74a' }) {
+  return (
+    <div style={{ margin: '34px 0 30px', display: 'flex', justifyContent: 'center' }}>
+      <svg width="420" height="24" viewBox="0 0 420 24" style={{ maxWidth: '100%' }} aria-hidden="true">
+        {/* flanking lines */}
+        <line x1="0"   y1="12" x2="176" y2="12" stroke={color} strokeWidth="0.75" opacity="0.9"/>
+        <line x1="244" y1="12" x2="420" y2="12" stroke={color} strokeWidth="0.75" opacity="0.9"/>
+        {/* inner dots */}
+        <circle cx="170" cy="12" r="1.5" fill={color}/>
+        <circle cx="250" cy="12" r="1.5" fill={color}/>
+        {/* flourish leaves */}
+        <path d="M 180 12 Q 192 4 204 12 Q 192 20 180 12 Z" fill={color} opacity="0.35"/>
+        <path d="M 240 12 Q 228 4 216 12 Q 228 20 240 12 Z" fill={color} opacity="0.35"/>
+        {/* central compass rose */}
+        <g transform="translate(210 12)">
+          <circle r="8" fill="none" stroke={color} strokeWidth="0.75"/>
+          <circle r="5" fill="none" stroke={color} strokeWidth="0.5" opacity="0.6"/>
+          <path d="M 0 -9 L 1.2 0 L 0 9 L -1.2 0 Z" fill={color}/>
+          <path d="M -9 0 L 0 1.2 L 9 0 L 0 -1.2 Z" fill={color}/>
+          <path d="M -6 -6 L 0.8 -0.8 L 6 6 L -0.8 0.8 Z" fill={color} opacity="0.5"/>
+          <path d="M -6 6 L 0.8 0.8 L 6 -6 L -0.8 -0.8 Z" fill={color} opacity="0.5"/>
+          <circle r="1.2" fill={color}/>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+// Chapter-style section header — small gold eyebrow + serif title, centred.
+function SectionHeader({ eyebrow, title }) {
+  return (
+    <div style={{ textAlign: 'center', marginBottom: 18 }}>
+      <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 8 }}>{eyebrow}</div>
+      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+// A card with gold corner flourishes — feels like a framed page.
+function FramedCard({ children, style }) {
+  const cornerSize = 20;
+  const Corner = ({ rotate, x, y }) => (
+    <svg width={cornerSize} height={cornerSize} viewBox="0 0 24 24"
+      style={{ position: 'absolute', [x]: -6, [y]: -6, transform: `rotate(${rotate}deg)`, pointerEvents: 'none' }}>
+      <path d="M 22 2 L 14 2 M 22 2 L 22 10 M 22 2 Q 16 4 14 10" fill="none" stroke="#c9a74a" strokeWidth="1.2" strokeLinecap="round"/>
+      <circle cx="22" cy="2" r="1.6" fill="#c9a74a"/>
+    </svg>
+  );
+  return (
+    <div style={{
+      position: 'relative',
+      background: 'linear-gradient(180deg, rgba(255,253,247,0.92) 0%, rgba(251,245,228,0.92) 100%)',
+      border: '1px solid #d9c78a',
+      borderRadius: 10,
+      padding: 24,
+      boxShadow: '0 1px 3px rgba(31,29,26,0.04), inset 0 0 0 1px rgba(255,255,255,0.4)',
+      ...style,
+    }}>
+      <Corner rotate="0"   x="left"  y="top"/>
+      <Corner rotate="90"  x="right" y="top"/>
+      <Corner rotate="270" x="left"  y="bottom"/>
+      <Corner rotate="180" x="right" y="bottom"/>
+      {children}
     </div>
   );
 }
@@ -213,122 +317,182 @@ function StatCard({ label, value, accent }) {
   );
 }
 
+// Stat "seal" — parchment fill, gold double-ring frame, serif tabular numeral.
+function StatSeal({ label, value, accent }) {
+  return (
+    <div style={{
+      position: 'relative',
+      background: 'linear-gradient(180deg, #fffdf4 0%, #f6ead0 100%)',
+      border: '1.25px solid #c9a74a',
+      borderRadius: 10,
+      padding: '22px 16px 18px',
+      textAlign: 'center',
+      outline: '1px solid #c9a74a',
+      outlineOffset: 3,
+      boxShadow: '0 2px 8px rgba(155,124,50,0.1)',
+    }}>
+      <div style={{
+        fontFamily: "'Playfair Display', serif", fontSize: 46, fontWeight: 700,
+        color: accent, lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+      }}>{value}</div>
+      <div style={{
+        marginTop: 10, fontSize: 9.5, letterSpacing: '0.26em', textTransform: 'uppercase',
+        color: '#8a6d2a', fontWeight: 700,
+      }}>{label}</div>
+    </div>
+  );
+}
+
 // A petal-bloom chart. Five teardrop petals radiate from the centre, each
 // value's petal length proportional to how often it has been tagged.
+// A compass rose. Five spear-point arms radiate from the centre pivot; arm
+// length is proportional to how often that value has been tagged. Degree
+// ring with tick marks, central pivot with compass star.
 function ValuesChart({ counts, max }) {
-  const size = 360;
-  const innerR = 38;
-  const outerMax = 132;
-  const outerMin = 56;
-  const halfW = 24;
-  const labelR = outerMax + 28;
+  const size = 380;
+  const cx = size / 2, cy = size / 2;
+  const pivotR   = 22;   // central gold pivot
+  const ringIn   = 138;  // inner edge of degree ring
+  const ringOut  = 148;  // outer edge of degree ring
+  const armMax   = 128;  // arm tip at count=max
+  const armMin   = 54;   // arm tip at count=0 (keep visible)
+  const armHalfW = 14;   // arm half-width at the base
+  const labelR   = 170;  // label ring (outside the degree ring)
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
-  const petalPath = (outer) => {
-    const ctrlA = outer - (outer - innerR) * 0.12;
-    const ctrlB = innerR + (outer - innerR) * 0.18;
-    return `M 0 ${-outer} C ${halfW} ${-ctrlA} ${halfW} ${-ctrlB} 0 ${-innerR} C ${-halfW} ${-ctrlB} ${-halfW} ${-ctrlA} 0 ${-outer} Z`;
-  };
-
-  const petals = VALUES.map((v, i) => {
+  const arms = VALUES.map((v, i) => {
     const count = counts[v.id] || 0;
     const ratio = max ? count / max : 0;
-    const outer = outerMin + (outerMax - outerMin) * ratio;
-    const angle = i * 72;
-    const labelX = Math.sin(angle * Math.PI / 180) * labelR;
-    const labelY = -Math.cos(angle * Math.PI / 180) * labelR;
-    return { v, count, outer, angle, labelX, labelY, faded: count === 0 };
+    const tip = armMin + (armMax - armMin) * ratio;
+    const angle = i * 72;                          // 0°, 72°, 144°, 216°, 288°
+    const rad = angle * Math.PI / 180;
+    const labelX = Math.sin(rad) * labelR;
+    const labelY = -Math.cos(rad) * labelR;
+    return { v, count, tip, angle, labelX, labelY, faded: count === 0 };
   });
-  const topCount = Math.max(...petals.map(p => p.count));
-  const topPetal = topCount > 0 ? petals.find(p => p.count === topCount) : null;
+  const topCount = Math.max(...arms.map(a => a.count));
+  const topArm = topCount > 0 ? arms.find(a => a.count === topCount) : null;
+
+  // Diamond arm halves (split for a 3D spear look)
+  // base sits at y=pivotR (just outside the pivot), tip at y=-len
+  const armRight = (len) => `M 0 ${-pivotR + 2} L ${armHalfW} 0 L 0 ${-len} Z`;
+  const armLeft  = (len) => `M 0 ${-pivotR + 2} L ${-armHalfW} 0 L 0 ${-len} Z`;
+
+  // Degree ring ticks: 40 total (every 9°), major at every value angle
+  const tickCount = 40;
+  const ticks = Array.from({ length: tickCount }, (_, i) => {
+    const a = i * (360 / tickCount);
+    const rad = a * Math.PI / 180;
+    const isMajor = [0, 72, 144, 216, 288].includes(a);
+    const isMid   = !isMajor && a % 18 === 0;
+    const tickLen = isMajor ? 12 : isMid ? 7 : 4;
+    const mid = (ringIn + ringOut) / 2;
+    const r1 = mid - tickLen / 2;
+    const r2 = mid + tickLen / 2;
+    return {
+      x1: Math.sin(rad) * r1, y1: -Math.cos(rad) * r1,
+      x2: Math.sin(rad) * r2, y2: -Math.cos(rad) * r2,
+      major: isMajor, mid: isMid,
+    };
+  });
 
   return (
     <div>
       <svg viewBox={`0 0 ${size} ${size}`}
-        style={{ display: 'block', width: '100%', maxWidth: 460, margin: '0 auto', overflow: 'visible' }}>
+        style={{ display: 'block', width: '100%', maxWidth: 480, margin: '0 auto', overflow: 'visible' }}>
         <defs>
-          <filter id="petalShadow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2"/>
-            <feOffset dx="0" dy="1.5"/>
+          <filter id="armShadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.8"/>
+            <feOffset dx="0" dy="1.2"/>
             <feComponentTransfer><feFuncA type="linear" slope="0.22"/></feComponentTransfer>
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          {VALUES.map(v => (
-            <linearGradient key={v.id} id={`petal-${v.id}`} x1="50%" y1="0%" x2="50%" y2="100%">
-              <stop offset="0%"   stopColor={v.color} stopOpacity="1"/>
-              <stop offset="100%" stopColor={v.color} stopOpacity="0.7"/>
-            </linearGradient>
-          ))}
+          <radialGradient id="pivotGrad" cx="50%" cy="40%" r="60%">
+            <stop offset="0%"   stopColor="#fff7d9"/>
+            <stop offset="60%"  stopColor="#e9c86e"/>
+            <stop offset="100%" stopColor="#c9a74a"/>
+          </radialGradient>
           <style>{`
-            @keyframes rj-bloom {
-              0%   { transform: scale(0.2) rotate(-20deg); opacity: 0; }
-              70%  { opacity: 1; }
-              100% { transform: scale(1) rotate(0); opacity: 1; }
+            @keyframes rj-sweep {
+              0%   { transform: scaleY(0);  opacity: 0; }
+              60%  { opacity: 1; }
+              100% { transform: scaleY(1);  opacity: 1; }
             }
-            .rj-petal { transform-origin: ${size / 2}px ${size / 2}px; animation: rj-bloom .9s cubic-bezier(.2,.8,.3,1.1) backwards; }
-            ${petals.map((_, i) => `.rj-petal-${i} { animation-delay: ${i * 90}ms; }`).join('\n')}
+            .rj-arm-body { transform-origin: 0 0; animation: rj-sweep .7s cubic-bezier(.2,.8,.3,1.1) backwards; }
+            ${arms.map((_, i) => `.rj-arm-${i} .rj-arm-body { animation-delay: ${i * 70}ms; }`).join('\n')}
+            @keyframes rj-ring-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
+            .rj-ring { animation: rj-ring-fade .5s ease-out backwards; }
           `}</style>
         </defs>
 
-        <g transform={`translate(${size / 2} ${size / 2})`}>
-          {/* Soft bloom ring for reference */}
-          <circle r={outerMax + 8} fill="none" stroke="#e3dcc8" strokeWidth="0.75" strokeDasharray="2 5"/>
+        <g transform={`translate(${cx} ${cy})`}>
+          {/* Degree ring (two concentric circles) */}
+          <g className="rj-ring">
+            <circle r={ringOut + 10} fill="none" stroke="#c9a74a" strokeWidth="0.5" strokeOpacity="0.35"/>
+            <circle r={ringOut}      fill="none" stroke="#c9a74a" strokeWidth="1"/>
+            <circle r={ringIn}       fill="none" stroke="#c9a74a" strokeWidth="0.75"/>
+            {ticks.map((t, i) => (
+              <line key={i}
+                x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
+                stroke={t.major ? '#8a6d2a' : '#c9a74a'}
+                strokeWidth={t.major ? 1.2 : t.mid ? 0.75 : 0.5}
+                strokeOpacity={t.major ? 1 : 0.7}/>
+            ))}
+            {/* Inner dashed guide at max-arm radius */}
+            <circle r={armMax + 4} fill="none" stroke="#c9a74a" strokeOpacity="0.28" strokeWidth="0.5" strokeDasharray="2 4"/>
+          </g>
 
-          {/* Petals (and per-petal labels) */}
-          {petals.map((p, i) => (
-            <g key={p.v.id} className={`rj-petal rj-petal-${i}`}>
-              <g transform={`rotate(${p.angle})`} opacity={p.faded ? 0.32 : 1}>
-                <path d={petalPath(p.outer)}
-                  fill={`url(#petal-${p.v.id})`}
-                  stroke={p.v.color} strokeOpacity="0.5" strokeWidth="0.75"
-                  filter="url(#petalShadow)"/>
-                {/* Inner highlight stroke */}
-                <path d={petalPath(p.outer - 6)}
-                  fill="none" stroke="#fff" strokeOpacity="0.22" strokeWidth="1"/>
+          {/* Compass arms — spear-pointed, split into light/dark halves */}
+          {arms.map((a, i) => (
+            <g key={a.v.id} className={`rj-arm-${i}`}>
+              <g transform={`rotate(${a.angle})`} opacity={a.faded ? 0.35 : 1}>
+                <g className="rj-arm-body">
+                  <path d={armRight(a.tip)} fill={a.v.color} opacity="0.96" filter="url(#armShadow)"/>
+                  <path d={armLeft(a.tip)}  fill={a.v.color} opacity="0.65"/>
+                  {/* centerline spine */}
+                  <line x1="0" y1={-pivotR + 2} x2="0" y2={-a.tip} stroke="#1f1d1a" strokeOpacity="0.25" strokeWidth="0.5"/>
+                  {/* tip marker */}
+                  <circle cx="0" cy={-a.tip} r="2.2" fill={a.v.color} stroke="#fff" strokeWidth="0.75"/>
+                </g>
               </g>
-              <g transform={`translate(${p.labelX} ${p.labelY})`}>
-                <text textAnchor="middle" dominantBaseline="middle" y={-7}
-                  fill={p.v.color} fontSize="10.5" fontWeight="700" letterSpacing="0.16em"
-                  style={{ fontFamily: 'inherit' }}>
-                  {p.v.label.toUpperCase()}
+              {/* Label */}
+              <g transform={`translate(${a.labelX} ${a.labelY})`}>
+                <text textAnchor="middle" dominantBaseline="middle" y={-8}
+                  fill={a.v.color} fontSize="10.5" fontWeight="700" letterSpacing="0.18em">
+                  {a.v.label.toUpperCase()}
                 </text>
-                <text textAnchor="middle" dominantBaseline="middle" y={12}
-                  fill={p.faded ? '#bab4a1' : '#1f1d1a'} fontSize="15" fontWeight="700"
-                  style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
-                  {p.count}
+                <text textAnchor="middle" dominantBaseline="middle" y={10}
+                  fill={a.faded ? '#bab4a1' : '#1f1d1a'} fontSize="15" fontWeight="700"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {a.count}
                 </text>
               </g>
             </g>
           ))}
 
-          {/* Centre disc */}
-          <circle r={innerR} fill="#fff" stroke="#9b1844" strokeWidth="1.25"/>
-          {total > 0 ? (
-            <g>
-              <text textAnchor="middle" dominantBaseline="central" y={-5}
-                fill="#1f1d1a" fontSize="28" fontWeight="700"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
-                {total}
-              </text>
-              <text textAnchor="middle" dominantBaseline="central" y={17}
-                fill="#7c7c7c" fontSize="8.5" fontWeight="700" letterSpacing="0.22em">
-                TAGS
-              </text>
-            </g>
-          ) : (
-            <text textAnchor="middle" dominantBaseline="central"
-              fill="#9b1844" fontSize="9" fontWeight="700" letterSpacing="0.22em">
-              COMPASS
-            </text>
-          )}
+          {/* Central pivot — gold disc with a small magenta compass star */}
+          <circle r={pivotR + 4} fill="none" stroke="#c9a74a" strokeWidth="0.6" strokeOpacity="0.5"/>
+          <circle r={pivotR} fill="url(#pivotGrad)" stroke="#8a6d2a" strokeWidth="1"/>
+          <circle r={pivotR - 5} fill="none" stroke="#8a6d2a" strokeWidth="0.5" strokeOpacity="0.55"/>
+          {/* 4-point star inside pivot */}
+          {[0, 90, 180, 270].map(angle => (
+            <path key={angle} d={`M 0 0 L 3 0 L 0 ${-(pivotR - 6)} L -3 0 Z`}
+              fill="#9b1844" transform={`rotate(${angle})`}/>
+          ))}
+          {/* Secondary smaller diagonal points */}
+          {[45, 135, 225, 315].map(angle => (
+            <path key={angle} d={`M 0 0 L 2 0 L 0 ${-(pivotR - 10)} L -2 0 Z`}
+              fill="#9b1844" opacity="0.6" transform={`rotate(${angle})`}/>
+          ))}
+          <circle r="2.2" fill="#5a0d25"/>
         </g>
       </svg>
 
-      {topPetal ? (
+      {topArm ? (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#5f5a52' }}>
-          Pointing strongest to{' '}
-          <span style={{ color: topPetal.v.color, fontWeight: 700 }}>{topPetal.v.label.toLowerCase()}</span>
-          {' — '}{topPetal.count} tag{topPetal.count === 1 ? '' : 's'} this year.
+          The needle points strongest to{' '}
+          <span style={{ color: topArm.v.color, fontWeight: 700 }}>{topArm.v.label.toLowerCase()}</span>
+          {' — '}{topArm.count} tag{topArm.count === 1 ? '' : 's'} this year{total > 0 ? ` · ${total} total` : ''}.
         </div>
       ) : (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>
@@ -340,8 +504,9 @@ function ValuesChart({ counts, max }) {
 }
 
 // ─── Weekly Reflections ───────────────────────────────────────
-function WeeklyView({ entries, onAdd, onDelete }) {
+function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
+  const [editingId, setEditingId] = useState(null);
 
   if (composing) {
     return (
@@ -349,6 +514,18 @@ function WeeklyView({ entries, onAdd, onDelete }) {
         onCancel={entries.length > 0 ? () => setComposing(false) : null}
         onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
     );
+  }
+
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      return (
+        <WeeklyForm
+          initial={entry}
+          onCancel={() => setEditingId(null)}
+          onSave={(patch) => { onUpdate(editingId, patch); setEditingId(null); }}/>
+      );
+    }
   }
 
   return (
@@ -370,14 +547,18 @@ function WeeklyView({ entries, onAdd, onDelete }) {
         <EmptyState label="No reflections yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => <WeeklyCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
+          {entries.map(e => (
+            <WeeklyCard key={e.id} entry={e}
+              onEdit={() => setEditingId(e.id)}
+              onDelete={() => onDelete(e.id)}/>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function WeeklyCard({ entry, onDelete }) {
+function WeeklyCard({ entry, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   return (
     <Card>
@@ -402,6 +583,10 @@ function WeeklyCard({ entry, onDelete }) {
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onEdit}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            Edit
           </button>
           <button onClick={onDelete} title="Delete"
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
@@ -443,15 +628,16 @@ function EmptyState({ label }) {
   );
 }
 
-function WeeklyForm({ onSave, onCancel }) {
-  const [date, setDate]       = useState(todayISO());
-  const [moment, setMoment]   = useState('');
-  const [values, setValues]   = useState([]);
-  const [photo, setPhoto]     = useState(null);
-  const [caption, setCaption] = useState('');
-  const [proud, setProud]     = useState('');
-  const [tricky, setTricky]   = useState('');
-  const [mood, setMood]       = useState('');
+function WeeklyForm({ onSave, onCancel, initial }) {
+  const editing = !!initial;
+  const [date, setDate]       = useState(initial?.date   ?? todayISO());
+  const [moment, setMoment]   = useState(initial?.moment ?? '');
+  const [values, setValues]   = useState(initial?.values ?? []);
+  const [photo, setPhoto]     = useState(initial?.photo  ?? null);
+  const [caption, setCaption] = useState(initial?.caption ?? '');
+  const [proud, setProud]     = useState(initial?.proud  ?? '');
+  const [tricky, setTricky]   = useState(initial?.tricky ?? '');
+  const [mood, setMood]       = useState(initial?.mood   ?? '');
 
   const canSave = moment.trim().length > 0;
   const save = () => {
@@ -466,8 +652,10 @@ function WeeklyForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Reflection"
-      title={<>This week <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in five minutes.</span></>}
+      eyebrow={editing ? 'Edit Reflection' : 'New Reflection'}
+      title={editing
+        ? <>Edit this <span style={{ fontStyle: 'italic', color: '#9b1844' }}>reflection.</span></>
+        : <>This week <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in five minutes.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
@@ -534,13 +722,19 @@ function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>{children}</div>
       </Card>
+      {/* Duplicate save/cancel at the bottom for long forms */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
+        <Button onClick={onSave} disabled={!canSave}>Save</Button>
+      </div>
     </div>
   );
 }
 
 // ─── Long Tutorial Reflections ────────────────────────────────
-function TutorialView({ entries, onAdd, onDelete }) {
+function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
+  const [editingId, setEditingId] = useState(null);
 
   if (composing) {
     return (
@@ -548,6 +742,18 @@ function TutorialView({ entries, onAdd, onDelete }) {
         onCancel={entries.length > 0 ? () => setComposing(false) : null}
         onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
     );
+  }
+
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      return (
+        <TutorialForm
+          initial={entry}
+          onCancel={() => setEditingId(null)}
+          onSave={(patch) => { onUpdate(editingId, patch); setEditingId(null); }}/>
+      );
+    }
   }
 
   const yellowTotal = entries.reduce((n, e) => n + (e.yellowTickets || 0), 0);
@@ -579,7 +785,11 @@ function TutorialView({ entries, onAdd, onDelete }) {
         <EmptyState label="No long tutorials yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => <TutorialCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
+          {entries.map(e => (
+            <TutorialCard key={e.id} entry={e}
+              onEdit={() => setEditingId(e.id)}
+              onDelete={() => onDelete(e.id)}/>
+          ))}
         </div>
       )}
     </div>
@@ -595,7 +805,7 @@ function TicketBadge({ color, tint, label, value }) {
   );
 }
 
-function TutorialCard({ entry, onDelete }) {
+function TutorialCard({ entry, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   return (
     <Card>
@@ -621,6 +831,10 @@ function TutorialCard({ entry, onDelete }) {
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onEdit}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            Edit
           </button>
           <button onClick={onDelete} title="Delete"
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
@@ -649,20 +863,21 @@ function TutorialCard({ entry, onDelete }) {
   );
 }
 
-function TutorialForm({ onSave, onCancel }) {
-  const [date, setDate]               = useState(todayISO());
-  const [term, setTerm]               = useState('Michaelmas');
-  const [title, setTitle]             = useState('');
-  const [story, setStory]             = useState('');
-  const [shift, setShift]             = useState('');
-  const [values, setValues]           = useState([]);
-  const [photo, setPhoto]             = useState(null);
-  const [caption, setCaption]         = useState('');
-  const [wentWell, setWentWell]       = useState('');
-  const [differently, setDifferently] = useState('');
-  const [discuss, setDiscuss]         = useState('');
-  const [yellowTickets, setYellow]    = useState(0);
-  const [blueTickets, setBlue]        = useState(0);
+function TutorialForm({ onSave, onCancel, initial }) {
+  const editing = !!initial;
+  const [date, setDate]               = useState(initial?.date        ?? todayISO());
+  const [term, setTerm]               = useState(initial?.term        ?? 'Michaelmas');
+  const [title, setTitle]             = useState(initial?.title       ?? '');
+  const [story, setStory]             = useState(initial?.story       ?? '');
+  const [shift, setShift]             = useState(initial?.shift       ?? '');
+  const [values, setValues]           = useState(initial?.values      ?? []);
+  const [photo, setPhoto]             = useState(initial?.photo       ?? null);
+  const [caption, setCaption]         = useState(initial?.caption     ?? '');
+  const [wentWell, setWentWell]       = useState(initial?.wentWell    ?? '');
+  const [differently, setDifferently] = useState(initial?.differently ?? '');
+  const [discuss, setDiscuss]         = useState(initial?.discuss     ?? '');
+  const [yellowTickets, setYellow]    = useState(initial?.yellowTickets ?? 0);
+  const [blueTickets, setBlue]        = useState(initial?.blueTickets   ?? 0);
 
   const canSave = title.trim().length > 0 && story.trim().length > 0;
   const save = () => {
@@ -679,8 +894,10 @@ function TutorialForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Long Tutorial"
-      title={<>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>long tutorial.</span></>}
+      eyebrow={editing ? 'Edit Long Tutorial' : 'New Long Tutorial'}
+      title={editing
+        ? <>Edit this <span style={{ fontStyle: 'italic', color: '#9b1844' }}>long tutorial.</span></>
+        : <>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>long tutorial.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
