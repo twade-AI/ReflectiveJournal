@@ -57,8 +57,8 @@ function App() {
 function NavBar({ view, onNav, pupil }) {
   const tabs = [
     { id: 'profile',   label: 'The Hero' },
-    { id: 'weekly',    label: 'Waypoints' },
-    { id: 'tutorial',  label: 'Councils' },
+    { id: 'weekly',    label: 'Reflections' },
+    { id: 'tutorial',  label: 'Long Tutorials' },
     { id: 'scrapbook', label: 'Relics' },
     { id: 'book',      label: 'The Saga' },
   ];
@@ -127,9 +127,9 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
   // Auto-summary paragraph (rule-based — real LLM summary is a future backend job)
   const summary = useMemo(() => {
     const name = pupil.name ? pupil.name.split(' ')[0] : 'You';
-    if (totalWeekly + totalTutorial === 0) return `${name} hasn't set off on the journey yet. Drop your first waypoint to begin.`;
+    if (totalWeekly + totalTutorial === 0) return `${name} hasn't set off on the journey yet. Write your first reflection to begin.`;
     const bits = [];
-    bits.push(`${name} has logged ${totalWeekly} waypoint${totalWeekly === 1 ? '' : 's'} and ${totalTutorial} council${totalTutorial === 1 ? '' : 's'} so far.`);
+    bits.push(`${name} has logged ${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'} and ${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'} so far.`);
     if (topValue && valueCounts[topValueId] >= 2) {
       bits.push(`The compass points strongest to ${topValue.label.toLowerCase()} — in ${valueCounts[topValueId]} entries.`);
     }
@@ -146,15 +146,13 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
   return (
     <div>
-      {/* Odyssey hero */}
-      <div style={{
-        marginBottom: 28, padding: '24px 24px 20px', textAlign: 'center',
-        background: 'linear-gradient(180deg, #fffdf7 0%, #fbf5e4 100%)',
-        border: '1px solid #e3dcc8', borderRadius: 16,
-        boxShadow: '0 1px 3px rgba(31,29,26,0.04)',
-      }}>
+      {/* Odyssey hero — no frame; blend mode drops the logo's white background into the cream page */}
+      <div style={{ margin: '-16px 0 12px', textAlign: 'center' }}>
         <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey"
-          style={{ width: '100%', maxWidth: 540, height: 'auto', display: 'block', margin: '0 auto' }}/>
+          style={{
+            width: '100%', maxWidth: 620, height: 'auto', display: 'block', margin: '0 auto',
+            mixBlendMode: 'multiply',
+          }}/>
       </div>
 
       {/* Greeting */}
@@ -170,14 +168,14 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
       {/* Quick actions */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 32 }}>
-        <Button onClick={() => onNav('weekly')}>+ Drop a waypoint</Button>
-        <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for council</Button>
+        <Button onClick={() => onNav('weekly')}>+ New reflection</Button>
+        <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for long tutorial</Button>
       </div>
 
       {/* Stats strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Waypoints"      value={totalWeekly}   accent="#9b1844"/>
-        <StatCard label="Councils"       value={totalTutorial} accent="#9b1844"/>
+        <StatCard label="Reflections"    value={totalWeekly}   accent="#9b1844"/>
+        <StatCard label="Long tutorials" value={totalTutorial} accent="#9b1844"/>
         <StatCard label="Yellow tickets" value={yellowTotal}   accent="#e8a935"/>
         <StatCard label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
       </div>
@@ -185,7 +183,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
       {/* The Compass */}
       <Card style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>The Compass</div>
-        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 20 }}>Which way are you growing? Tag a value in a waypoint or council and this compass turns toward it.</div>
+        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 20 }}>Which way are you growing? Tag a value in a reflection or long tutorial and this compass turns toward it.</div>
         <ValuesChart counts={valueCounts} max={maxCount}/>
       </Card>
 
@@ -334,7 +332,7 @@ function ValuesChart({ counts, max }) {
         </div>
       ) : (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>
-          Tag values on your waypoints and councils — your compass will turn.
+          Tag values on your reflections and long tutorials — your compass will turn.
         </div>
       )}
     </div>
@@ -357,19 +355,19 @@ function WeeklyView({ entries, onAdd, onDelete }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Waypoints</div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Reflections</div>
           <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-            Markers along <span style={{ fontStyle: 'italic', color: '#9b1844' }}>the way.</span>
+            A habit of <span style={{ fontStyle: 'italic', color: '#9b1844' }}>noticing.</span>
           </h1>
           <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
-            Five minutes a week. Drop a waypoint — a moment worth marking. Tag the values that showed up and the compass turns with you.
+            Five minutes a week. What happened, what you're proud of, what was tricky. Tag the values that showed up and the compass turns with you.
           </p>
         </div>
-        <Button onClick={() => setComposing(true)}>+ Drop a waypoint</Button>
+        <Button onClick={() => setComposing(true)}>+ New reflection</Button>
       </div>
 
       {entries.length === 0 ? (
-        <EmptyState label="No waypoints yet."/>
+        <EmptyState label="No reflections yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {entries.map(e => <WeeklyCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
@@ -386,7 +384,7 @@ function WeeklyCard({ entry, onDelete }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>
-            Waypoint · week of {formatDate(entry.weekCommencing || entry.date)}
+            Reflection · week of {formatDate(entry.weekCommencing || entry.date)}
           </div>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: '#1f1d1a', fontStyle: 'italic', lineHeight: 1.3, marginBottom: 10 }}>
             {entry.moment || 'Untitled'}
@@ -468,14 +466,14 @@ function WeeklyForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Waypoint"
+      eyebrow="New Reflection"
       title={<>This week <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in five minutes.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
       <Field label="Date"><TextInput type="date" value={date} onChange={setDate}/></Field>
 
-      <Field label="A moment worth marking" hint="Could be big or small — a match, a lesson, a tricky conversation.">
+      <Field label="A moment from this week" hint="Could be big or small — a match, a lesson, a tricky conversation.">
         <TextArea value={moment} onChange={setMoment} placeholder="What happened? Who was there?" rows={5}/>
       </Field>
 
@@ -559,15 +557,15 @@ function TutorialView({ entries, onAdd, onDelete }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Councils</div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Long Tutorials</div>
           <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-            Sit with your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>mentor.</span>
+            Before you meet your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>tutor.</span>
           </h1>
           <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
-            A longer reflection to prepare for a council with your tutor. Log your yellow and blue tickets too — they're part of the story.
+            A longer reflection to prepare for your long tutorial. Log your yellow and blue tickets too — they're part of the story.
           </p>
         </div>
-        <Button onClick={() => setComposing(true)}>+ New council</Button>
+        <Button onClick={() => setComposing(true)}>+ New long tutorial</Button>
       </div>
 
       {(yellowTotal + blueTotal) > 0 && (
@@ -578,7 +576,7 @@ function TutorialView({ entries, onAdd, onDelete }) {
       )}
 
       {entries.length === 0 ? (
-        <EmptyState label="No councils yet."/>
+        <EmptyState label="No long tutorials yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {entries.map(e => <TutorialCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
@@ -643,7 +641,7 @@ function TutorialCard({ entry, onDelete }) {
             {entry.shift    && <DetailRow label="What shifted in me"      color="#ec6608" body={entry.shift}/>}
             {entry.wentWell && <DetailRow label="What went well"          color="#009870" body={entry.wentWell}/>}
             {entry.differently && <DetailRow label="What I'd do differently" color="#ec6608" body={entry.differently}/>}
-            {entry.discuss  && <DetailRow label="To bring to council"     color="#9b1844" body={entry.discuss}/>}
+            {entry.discuss  && <DetailRow label="To discuss with tutor"   color="#9b1844" body={entry.discuss}/>}
           </div>
         </div>
       )}
@@ -681,8 +679,8 @@ function TutorialForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Council"
-      title={<>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>council.</span></>}
+      eyebrow="New Long Tutorial"
+      title={<>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>long tutorial.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
@@ -725,13 +723,13 @@ function TutorialForm({ onSave, onCancel }) {
         </Field>
       </div>
 
-      <Field label="To bring to council" hint="A question you want to put to your tutor.">
+      <Field label="To discuss with my tutor" hint="A question you want to bring into the long tutorial.">
         <TextArea value={discuss} onChange={setDiscuss} rows={3}/>
       </Field>
 
       <div>
         <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 4 }}>Tickets this term</div>
-        <div style={{ fontSize: 12.5, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 12 }}>How many yellow / blue tickets have you picked up since your last council?</div>
+        <div style={{ fontSize: 12.5, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 12 }}>How many yellow / blue tickets have you picked up since your last long tutorial?</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <NumberStepper label="Yellow tickets" value={yellowTickets} onChange={setYellow} color="#c98508"/>
           <NumberStepper label="Blue tickets"   value={blueTickets}   onChange={setBlue}   color="#2a2b7c"/>
@@ -774,7 +772,7 @@ function ScrapbookView({ state }) {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState label="No relics yet. Add a photo to a waypoint or council and it'll appear here."/>
+        <EmptyState label="No relics yet. Add a photo to a reflection or long tutorial and it'll appear here."/>
       ) : (
         <ScrapbookCollage items={items}/>
       )}
@@ -890,7 +888,7 @@ function BookView({ state }) {
           Your voyage, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
         </h1>
         <p style={{ fontSize: 15, color: '#5f5a52', marginTop: 12, maxWidth: 600, lineHeight: 1.5 }}>
-          Every waypoint and council in order, page by page. Use the arrow keys or the buttons to turn the page.
+          Every reflection and long tutorial in order, page by page. Use the arrow keys or the buttons to turn the page.
         </p>
       </div>
 
@@ -942,7 +940,7 @@ function PrintEntry({ entry }) {
   return (
     <div className="rj-print-entry">
       <div className="rj-print-meta">
-        {isTutorial ? 'Council' : 'Waypoint'} · {formatDate(entry.date)}
+        {isTutorial ? 'Long Tutorial' : 'Reflection'} · {formatDate(entry.date)}
         {entry.term ? ` · ${entry.term}` : ''}
       </div>
       <h2 className="rj-print-h">{entry.title || entry.moment || 'Untitled'}</h2>
@@ -970,7 +968,7 @@ function PrintEntry({ entry }) {
           {entry.shift       && <PrintSection label="What shifted in me"      body={entry.shift}/>}
           {entry.wentWell    && <PrintSection label="What went well"          body={entry.wentWell}/>}
           {entry.differently && <PrintSection label="What I'd do differently" body={entry.differently}/>}
-          {entry.discuss     && <PrintSection label="To bring to council"     body={entry.discuss}/>}
+          {entry.discuss     && <PrintSection label="To discuss with tutor"   body={entry.discuss}/>}
           {(entry.yellowTickets > 0 || entry.blueTickets > 0) && (
             <div className="rj-print-tickets">
               {entry.yellowTickets > 0 && <span>Yellow tickets: <b>{entry.yellowTickets}</b></span>}
@@ -1018,7 +1016,7 @@ function BookSpread({ entry }) {
         borderRight: '1px solid rgba(155,24,68,0.08)',
       }}>
         <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>
-          {isTutorial ? 'Council' : 'Waypoint'} · {formatDate(entry.date)}
+          {isTutorial ? 'Long Tutorial' : 'Reflection'} · {formatDate(entry.date)}
           {entry.term ? ` · ${entry.term}` : ''}
         </div>
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: '#1f1d1a', lineHeight: 1.15, letterSpacing: '-0.01em', marginBottom: 18 }}>
@@ -1073,7 +1071,7 @@ function BookSpread({ entry }) {
             {entry.shift       && <BookSection label="What shifted in me"      body={entry.shift}/>}
             {entry.wentWell    && <BookSection label="What went well"          body={entry.wentWell}/>}
             {entry.differently && <BookSection label="What I'd do differently" body={entry.differently}/>}
-            {entry.discuss     && <BookSection label="To bring to council"     body={entry.discuss}/>}
+            {entry.discuss     && <BookSection label="To discuss with tutor"   body={entry.discuss}/>}
           </>
         ) : (
           <>
