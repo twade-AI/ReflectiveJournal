@@ -56,11 +56,11 @@ function App() {
 // ─── Nav ──────────────────────────────────────────────────────
 function NavBar({ view, onNav, pupil }) {
   const tabs = [
-    { id: 'profile',   label: 'Profile' },
-    { id: 'weekly',    label: 'Weekly' },
-    { id: 'tutorial',  label: 'Tutorial' },
-    { id: 'scrapbook', label: 'Scrapbook' },
-    { id: 'book',      label: 'Book' },
+    { id: 'profile',   label: 'The Hero' },
+    { id: 'weekly',    label: 'Waypoints' },
+    { id: 'tutorial',  label: 'Councils' },
+    { id: 'scrapbook', label: 'Relics' },
+    { id: 'book',      label: 'The Saga' },
   ];
   return (
     <header style={{
@@ -68,13 +68,17 @@ function NavBar({ view, onNav, pupil }) {
       background: '#9b1844', color: '#fff',
       borderBottom: '3px solid #ec6608',
     }}>
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1 }}>
-            The Haileybury <span style={{ fontStyle: 'italic' }}>Odyssey</span>
-          </div>
-          <div style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', fontWeight: 600 }}>
-            Reflective Journal
+      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img src="assets/logo-white.png" alt="Haileybury"
+            style={{ height: 44, width: 'auto', display: 'block' }}/>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 14, borderLeft: '1px solid rgba(255,255,255,0.28)' }}>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1 }}>
+              The <span style={{ fontStyle: 'italic' }}>Odyssey</span>
+            </div>
+            <div style={{ fontSize: 9.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', fontWeight: 600, lineHeight: 1 }}>
+              Reflective Journal
+            </div>
           </div>
         </div>
         <nav style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
@@ -123,11 +127,11 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
   // Auto-summary paragraph (rule-based — real LLM summary is a future backend job)
   const summary = useMemo(() => {
     const name = pupil.name ? pupil.name.split(' ')[0] : 'You';
-    if (totalWeekly + totalTutorial === 0) return `${name} hasn't logged any reflections yet. Tap "New weekly reflection" to start.`;
+    if (totalWeekly + totalTutorial === 0) return `${name} hasn't set off on the journey yet. Drop your first waypoint to begin.`;
     const bits = [];
-    bits.push(`${name} has logged ${totalWeekly} weekly reflection${totalWeekly === 1 ? '' : 's'} and ${totalTutorial} long tutorial reflection${totalTutorial === 1 ? '' : 's'} so far.`);
+    bits.push(`${name} has logged ${totalWeekly} waypoint${totalWeekly === 1 ? '' : 's'} and ${totalTutorial} council${totalTutorial === 1 ? '' : 's'} so far.`);
     if (topValue && valueCounts[topValueId] >= 2) {
-      bits.push(`The value showing up most often is ${topValue.label.toLowerCase()} — in ${valueCounts[topValueId]} entries.`);
+      bits.push(`The compass points strongest to ${topValue.label.toLowerCase()} — in ${valueCounts[topValueId]} entries.`);
     }
     if (yellowTotal + blueTotal > 0) {
       bits.push(`Tickets logged this year: ${yellowTotal} yellow, ${blueTotal} blue.`);
@@ -135,18 +139,29 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
     const mostRecent = [...weekly, ...tutorial].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
     if (mostRecent) {
       const title = mostRecent.title || mostRecent.moment || mostRecent.story || '';
-      if (title) bits.push(`Most recent reflection: "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}"`);
+      if (title) bits.push(`Most recent chapter: "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}"`);
     }
     return bits.join(' ');
   }, [pupil, weekly, tutorial, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial]);
 
   return (
     <div>
+      {/* Odyssey hero */}
+      <div style={{
+        marginBottom: 28, padding: '24px 24px 20px', textAlign: 'center',
+        background: 'linear-gradient(180deg, #fffdf7 0%, #fbf5e4 100%)',
+        border: '1px solid #e3dcc8', borderRadius: 16,
+        boxShadow: '0 1px 3px rgba(31,29,26,0.04)',
+      }}>
+        <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey"
+          style={{ width: '100%', maxWidth: 540, height: 'auto', display: 'block', margin: '0 auto' }}/>
+      </div>
+
       {/* Greeting */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Profile</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Hero</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-          {pupil.name ? `Hello, ${pupil.name.split(' ')[0]}.` : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>reflection profile</span>.</>}
+          {pupil.name ? `Hello, ${pupil.name.split(' ')[0]}.` : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
         </h1>
         <p style={{ fontSize: 16, color: '#5f5a52', marginTop: 12, maxWidth: 620, lineHeight: 1.55 }}>
           {summary}
@@ -155,22 +170,22 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
       {/* Quick actions */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 32 }}>
-        <Button onClick={() => onNav('weekly')}>+ New weekly reflection</Button>
-        <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for tutorial</Button>
+        <Button onClick={() => onNav('weekly')}>+ Drop a waypoint</Button>
+        <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for council</Button>
       </div>
 
       {/* Stats strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Weekly reflections"   value={totalWeekly}   accent="#9b1844"/>
-        <StatCard label="Tutorial reflections" value={totalTutorial} accent="#9b1844"/>
-        <StatCard label="Yellow tickets"       value={yellowTotal}   accent="#e8a935"/>
-        <StatCard label="Blue tickets"         value={blueTotal}     accent="#2a2b7c"/>
+        <StatCard label="Waypoints"      value={totalWeekly}   accent="#9b1844"/>
+        <StatCard label="Councils"       value={totalTutorial} accent="#9b1844"/>
+        <StatCard label="Yellow tickets" value={yellowTotal}   accent="#e8a935"/>
+        <StatCard label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
       </div>
 
-      {/* Values chart */}
+      {/* The Compass */}
       <Card style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>Values across the year</div>
-        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 20 }}>Which values are you paying most attention to? Tag them as you reflect and they'll show up here.</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>The Compass</div>
+        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 20 }}>Which way are you growing? Tag a value in a waypoint or council and this compass turns toward it.</div>
         <ValuesChart counts={valueCounts} max={maxCount}/>
       </Card>
 
@@ -305,7 +320,7 @@ function ValuesChart({ counts, max }) {
           ) : (
             <text textAnchor="middle" dominantBaseline="central"
               fill="#9b1844" fontSize="9" fontWeight="700" letterSpacing="0.22em">
-              BLOOM
+              COMPASS
             </text>
           )}
         </g>
@@ -313,13 +328,13 @@ function ValuesChart({ counts, max }) {
 
       {topPetal ? (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#5f5a52' }}>
-          Growing most in{' '}
+          Pointing strongest to{' '}
           <span style={{ color: topPetal.v.color, fontWeight: 700 }}>{topPetal.v.label.toLowerCase()}</span>
           {' — '}{topPetal.count} tag{topPetal.count === 1 ? '' : 's'} this year.
         </div>
       ) : (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>
-          Tag values on your reflections and your bloom will start to grow.
+          Tag values on your waypoints and councils — your compass will turn.
         </div>
       )}
     </div>
@@ -342,19 +357,19 @@ function WeeklyView({ entries, onAdd, onDelete }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Weekly Reflections</div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Waypoints</div>
           <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-            A habit of <span style={{ fontStyle: 'italic', color: '#9b1844' }}>noticing.</span>
+            Markers along <span style={{ fontStyle: 'italic', color: '#9b1844' }}>the way.</span>
           </h1>
           <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
-            Five minutes a week. What happened, what you're proud of, what was tricky. Tag the values that showed up.
+            Five minutes a week. Drop a waypoint — a moment worth marking. Tag the values that showed up and the compass turns with you.
           </p>
         </div>
-        <Button onClick={() => setComposing(true)}>+ New weekly reflection</Button>
+        <Button onClick={() => setComposing(true)}>+ Drop a waypoint</Button>
       </div>
 
       {entries.length === 0 ? (
-        <EmptyState label="No weekly reflections yet."/>
+        <EmptyState label="No waypoints yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {entries.map(e => <WeeklyCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
@@ -371,7 +386,7 @@ function WeeklyCard({ entry, onDelete }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>
-            Week of {formatDate(entry.weekCommencing || entry.date)}
+            Waypoint · week of {formatDate(entry.weekCommencing || entry.date)}
           </div>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: '#1f1d1a', fontStyle: 'italic', lineHeight: 1.3, marginBottom: 10 }}>
             {entry.moment || 'Untitled'}
@@ -453,14 +468,14 @@ function WeeklyForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Weekly Reflection"
+      eyebrow="New Waypoint"
       title={<>This week <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in five minutes.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
       <Field label="Date"><TextInput type="date" value={date} onChange={setDate}/></Field>
 
-      <Field label="A moment from this week" hint="Could be big or small — a match, a lesson, a tricky conversation.">
+      <Field label="A moment worth marking" hint="Could be big or small — a match, a lesson, a tricky conversation.">
         <TextArea value={moment} onChange={setMoment} placeholder="What happened? Who was there?" rows={5}/>
       </Field>
 
@@ -544,15 +559,15 @@ function TutorialView({ entries, onAdd, onDelete }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Long Tutorial Reflections</div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Councils</div>
           <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-            Before you meet your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>tutor.</span>
+            Sit with your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>mentor.</span>
           </h1>
           <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
-            A longer reflection to prep for a tutorial. Log your yellow and blue tickets too — they're part of the story.
+            A longer reflection to prepare for a council with your tutor. Log your yellow and blue tickets too — they're part of the story.
           </p>
         </div>
-        <Button onClick={() => setComposing(true)}>+ New tutorial reflection</Button>
+        <Button onClick={() => setComposing(true)}>+ New council</Button>
       </div>
 
       {(yellowTotal + blueTotal) > 0 && (
@@ -563,7 +578,7 @@ function TutorialView({ entries, onAdd, onDelete }) {
       )}
 
       {entries.length === 0 ? (
-        <EmptyState label="No tutorial reflections yet."/>
+        <EmptyState label="No councils yet."/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {entries.map(e => <TutorialCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
@@ -628,7 +643,7 @@ function TutorialCard({ entry, onDelete }) {
             {entry.shift    && <DetailRow label="What shifted in me"      color="#ec6608" body={entry.shift}/>}
             {entry.wentWell && <DetailRow label="What went well"          color="#009870" body={entry.wentWell}/>}
             {entry.differently && <DetailRow label="What I'd do differently" color="#ec6608" body={entry.differently}/>}
-            {entry.discuss  && <DetailRow label="To discuss with tutor"   color="#9b1844" body={entry.discuss}/>}
+            {entry.discuss  && <DetailRow label="To bring to council"     color="#9b1844" body={entry.discuss}/>}
           </div>
         </div>
       )}
@@ -666,8 +681,8 @@ function TutorialForm({ onSave, onCancel }) {
 
   return (
     <FormShell
-      eyebrow="New Tutorial Reflection"
-      title={<>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>tutorial.</span></>}
+      eyebrow="New Council"
+      title={<>Prep for your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>council.</span></>}
       onCancel={onCancel}
       onSave={save}
       canSave={canSave}>
@@ -710,13 +725,13 @@ function TutorialForm({ onSave, onCancel }) {
         </Field>
       </div>
 
-      <Field label="To discuss with my tutor" hint="A question you want to bring into the meeting.">
+      <Field label="To bring to council" hint="A question you want to put to your tutor.">
         <TextArea value={discuss} onChange={setDiscuss} rows={3}/>
       </Field>
 
       <div>
         <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 4 }}>Tickets this term</div>
-        <div style={{ fontSize: 12.5, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 12 }}>How many yellow / blue tickets have you picked up since your last tutorial?</div>
+        <div style={{ fontSize: 12.5, color: '#7c7c7c', fontStyle: 'italic', marginBottom: 12 }}>How many yellow / blue tickets have you picked up since your last council?</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <NumberStepper label="Yellow tickets" value={yellowTickets} onChange={setYellow} color="#c98508"/>
           <NumberStepper label="Blue tickets"   value={blueTickets}   onChange={setBlue}   color="#2a2b7c"/>
@@ -749,17 +764,17 @@ function ScrapbookView({ state }) {
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Scrapbook</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Relics</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-          Your year <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in pictures.</span>
+          Treasures <span style={{ fontStyle: 'italic', color: '#9b1844' }}>from the voyage.</span>
         </h1>
         <p style={{ fontSize: 15, color: '#5f5a52', marginTop: 12, maxWidth: 560, lineHeight: 1.5 }}>
-          Photos you've added to your reflections, pinned up together.
+          Photos you've gathered along the way — pinned up together.
         </p>
       </div>
 
       {items.length === 0 ? (
-        <EmptyState label="No photos yet. Add a photo to a reflection and it'll appear here."/>
+        <EmptyState label="No relics yet. Add a photo to a waypoint or council and it'll appear here."/>
       ) : (
         <ScrapbookCollage items={items}/>
       )}
@@ -870,19 +885,22 @@ function BookView({ state }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Book</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Saga</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-          Your reflections, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
+          Your voyage, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
         </h1>
         <p style={{ fontSize: 15, color: '#5f5a52', marginTop: 12, maxWidth: 600, lineHeight: 1.5 }}>
-          Every reflection you've written, in order. Use the arrow keys or the buttons to turn the page.
+          Every waypoint and council in order, page by page. Use the arrow keys or the buttons to turn the page.
         </p>
       </div>
 
       {total === 0 ? (
-        <EmptyState label="No reflections in your book yet."/>
+        <EmptyState label="No chapters in your saga yet."/>
       ) : (
         <>
+          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="outline" onClick={() => window.print()}>Export to PDF</Button>
+          </div>
           <BookSpread entry={entry}/>
           <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
@@ -891,8 +909,92 @@ function BookView({ state }) {
             </div>
             <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
           </div>
+
+          {/* Print-only layout: all reflections as full pages */}
+          <BookPrintable entries={entries}/>
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Printable book layout (visible only via @media print) ───
+function BookPrintable({ entries }) {
+  return (
+    <div className="rj-print">
+      <div className="rj-print-page rj-print-cover">
+        <div style={{ textAlign: 'center' }}>
+          <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey" className="rj-print-hero"/>
+          <div className="rj-print-byline">A Reflective Journal · Reflections, bound.</div>
+        </div>
+      </div>
+      {entries.map(e => (
+        <div key={e.id} className="rj-print-page">
+          <PrintEntry entry={e}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PrintEntry({ entry }) {
+  const isTutorial = entry._kind === 'tutorial';
+  return (
+    <div className="rj-print-entry">
+      <div className="rj-print-meta">
+        {isTutorial ? 'Council' : 'Waypoint'} · {formatDate(entry.date)}
+        {entry.term ? ` · ${entry.term}` : ''}
+      </div>
+      <h2 className="rj-print-h">{entry.title || entry.moment || 'Untitled'}</h2>
+
+      {entry.values?.length > 0 && (
+        <div className="rj-print-values">
+          {entry.values.map(id => VALUE_BY_ID[id] && (
+            <span key={id} className="rj-print-tag" style={{ borderColor: VALUE_BY_ID[id].color, color: VALUE_BY_ID[id].color }}>
+              {VALUE_BY_ID[id].label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {entry.photo && (
+        <figure className="rj-print-figure">
+          <img src={entry.photo} alt=""/>
+          {entry.caption && <figcaption>{entry.caption}</figcaption>}
+        </figure>
+      )}
+
+      {isTutorial ? (
+        <>
+          {entry.story       && <PrintSection label="What happened"           body={entry.story}/>}
+          {entry.shift       && <PrintSection label="What shifted in me"      body={entry.shift}/>}
+          {entry.wentWell    && <PrintSection label="What went well"          body={entry.wentWell}/>}
+          {entry.differently && <PrintSection label="What I'd do differently" body={entry.differently}/>}
+          {entry.discuss     && <PrintSection label="To bring to council"     body={entry.discuss}/>}
+          {(entry.yellowTickets > 0 || entry.blueTickets > 0) && (
+            <div className="rj-print-tickets">
+              {entry.yellowTickets > 0 && <span>Yellow tickets: <b>{entry.yellowTickets}</b></span>}
+              {entry.blueTickets   > 0 && <span>Blue tickets: <b>{entry.blueTickets}</b></span>}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {entry.moment && <PrintSection label="This week"        body={entry.moment}/>}
+          {entry.proud  && <PrintSection label="I'm proud of"     body={entry.proud}/>}
+          {entry.tricky && <PrintSection label="Something tricky" body={entry.tricky}/>}
+          {entry.mood   && <div className="rj-print-mood">Mood this week: <b>{entry.mood}</b></div>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PrintSection({ label, body }) {
+  return (
+    <div className="rj-print-section">
+      <div className="rj-print-section-label">{label}</div>
+      <div className="rj-print-section-body">{body}</div>
     </div>
   );
 }
@@ -916,7 +1018,7 @@ function BookSpread({ entry }) {
         borderRight: '1px solid rgba(155,24,68,0.08)',
       }}>
         <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>
-          {isTutorial ? 'Long Tutorial' : 'Weekly'} · {formatDate(entry.date)}
+          {isTutorial ? 'Council' : 'Waypoint'} · {formatDate(entry.date)}
           {entry.term ? ` · ${entry.term}` : ''}
         </div>
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: '#1f1d1a', lineHeight: 1.15, letterSpacing: '-0.01em', marginBottom: 18 }}>
@@ -971,7 +1073,7 @@ function BookSpread({ entry }) {
             {entry.shift       && <BookSection label="What shifted in me"      body={entry.shift}/>}
             {entry.wentWell    && <BookSection label="What went well"          body={entry.wentWell}/>}
             {entry.differently && <BookSection label="What I'd do differently" body={entry.differently}/>}
-            {entry.discuss     && <BookSection label="To discuss with tutor"   body={entry.discuss}/>}
+            {entry.discuss     && <BookSection label="To bring to council"     body={entry.discuss}/>}
           </>
         ) : (
           <>
