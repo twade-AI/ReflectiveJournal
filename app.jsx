@@ -220,4 +220,203 @@ function ValuesChart({ counts, max }) {
   );
 }
 
+// ─── Weekly Reflections ───────────────────────────────────────
+function WeeklyView({ entries, onAdd, onDelete }) {
+  const [composing, setComposing] = useState(entries.length === 0);
+
+  if (composing) {
+    return (
+      <WeeklyForm
+        onCancel={entries.length > 0 ? () => setComposing(false) : null}
+        onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Weekly Reflections</div>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+            A habit of <span style={{ fontStyle: 'italic', color: '#9b1844' }}>noticing.</span>
+          </h1>
+          <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
+            Five minutes a week. What happened, what you're proud of, what was tricky. Tag the values that showed up.
+          </p>
+        </div>
+        <Button onClick={() => setComposing(true)}>+ New weekly reflection</Button>
+      </div>
+
+      {entries.length === 0 ? (
+        <EmptyState label="No weekly reflections yet."/>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {entries.map(e => <WeeklyCard key={e.id} entry={e} onDelete={() => onDelete(e.id)}/>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WeeklyCard({ entry, onDelete }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 6 }}>
+            Week of {formatDate(entry.weekCommencing || entry.date)}
+          </div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: '#1f1d1a', fontStyle: 'italic', lineHeight: 1.3, marginBottom: 10 }}>
+            {entry.moment || 'Untitled'}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {entry.mood && (
+              <span style={{ padding: '4px 10px', borderRadius: 999, border: '1.5px solid #ec6608', background: '#fde5d0', color: '#ec6608', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {entry.mood}
+              </span>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => setOpen(o => !o)}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onDelete} title="Delete"
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
+            {Icons.trash}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #efe9d9', display: 'grid', gridTemplateColumns: entry.photo ? '160px 1fr' : '1fr', gap: 18 }}>
+          {entry.photo && <img src={entry.photo} alt="" style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 8 }}/>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {entry.proud && <DetailRow label="Proud of" color="#ec6608" body={entry.proud}/>}
+            {entry.tricky && <DetailRow label="Tricky"  color="#009fe3" body={entry.tricky}/>}
+            {entry.caption && <div style={{ fontSize: 12, fontStyle: 'italic', color: '#7c7c7c' }}>{entry.caption}</div>}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function DetailRow({ label, body, color }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color, fontWeight: 700, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 14, color: '#1f1d1a', lineHeight: 1.5 }}>{body}</div>
+    </div>
+  );
+}
+
+function EmptyState({ label }) {
+  return (
+    <div style={{
+      padding: 48, textAlign: 'center', border: '1.5px dashed #e3dcc8',
+      borderRadius: 14, color: '#7c7c7c', fontStyle: 'italic',
+    }}>
+      {label}
+    </div>
+  );
+}
+
+function WeeklyForm({ onSave, onCancel }) {
+  const [date, setDate]       = useState(todayISO());
+  const [moment, setMoment]   = useState('');
+  const [values, setValues]   = useState([]);
+  const [photo, setPhoto]     = useState(null);
+  const [caption, setCaption] = useState('');
+  const [proud, setProud]     = useState('');
+  const [tricky, setTricky]   = useState('');
+  const [mood, setMood]       = useState('');
+
+  const canSave = moment.trim().length > 0;
+  const save = () => {
+    if (!canSave) return;
+    onSave({
+      kind: 'weekly', date, weekCommencing: weekCommencingISO(date),
+      moment: moment.trim(), values,
+      photo, caption: caption.trim(),
+      proud: proud.trim(), tricky: tricky.trim(), mood,
+    });
+  };
+
+  return (
+    <FormShell
+      eyebrow="New Weekly Reflection"
+      title={<>This week <span style={{ fontStyle: 'italic', color: '#9b1844' }}>in five minutes.</span></>}
+      onCancel={onCancel}
+      onSave={save}
+      canSave={canSave}>
+      <Field label="Date"><TextInput type="date" value={date} onChange={setDate}/></Field>
+
+      <Field label="A moment from this week" hint="Could be big or small — a match, a lesson, a tricky conversation.">
+        <TextArea value={moment} onChange={setMoment} placeholder="What happened? Who was there?" rows={5}/>
+      </Field>
+
+      <Field label="Values in this story" hint="Tap any that showed up.">
+        <ValuePicker selected={values} onChange={setValues}/>
+      </Field>
+
+      <Field label="Photo or sketch (optional)">
+        <PhotoUpload value={photo} onChange={setPhoto} caption={caption} onCaption={setCaption}/>
+      </Field>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+        <Field label="I'm proud of…">
+          <TextArea value={proud} onChange={setProud} rows={3} placeholder="Something small counts."/>
+        </Field>
+        <Field label="Something tricky…">
+          <TextArea value={tricky} onChange={setTricky} rows={3} placeholder="A wobble you noticed."/>
+        </Field>
+      </div>
+
+      <Field label="My week in one word">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {MOODS.map(w => {
+            const selected = mood === w;
+            return (
+              <button key={w} type="button" onClick={() => setMood(selected ? '' : w)}
+                style={{
+                  padding: '10px 16px', borderRadius: 8,
+                  border: `1.5px solid ${selected ? '#9b1844' : '#e3dcc8'}`,
+                  background: selected ? '#9b1844' : '#fff',
+                  color: selected ? '#fff' : '#1f1d1a',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                {w}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+    </FormShell>
+  );
+}
+
+// ─── Form shell (shared by weekly + tutorial) ─────────────────
+function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>{eyebrow}</div>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 38, fontWeight: 700, margin: 0, lineHeight: 1.05, letterSpacing: '-0.02em' }}>{title}</h1>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
+          <Button onClick={onSave} disabled={!canSave}>Save</Button>
+        </div>
+      </div>
+      <Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>{children}</div>
+      </Card>
+    </div>
+  );
+}
+
 Object.assign(window, { App });
