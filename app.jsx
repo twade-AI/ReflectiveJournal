@@ -68,13 +68,17 @@ function NavBar({ view, onNav, pupil }) {
       background: '#9b1844', color: '#fff',
       borderBottom: '3px solid #ec6608',
     }}>
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1 }}>
-            The Haileybury <span style={{ fontStyle: 'italic' }}>Odyssey</span>
-          </div>
-          <div style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', fontWeight: 600 }}>
-            Reflective Journal
+      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img src="assets/logo-white.png" alt="Haileybury"
+            style={{ height: 44, width: 'auto', display: 'block' }}/>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 14, borderLeft: '1px solid rgba(255,255,255,0.28)' }}>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1 }}>
+              The <span style={{ fontStyle: 'italic' }}>Odyssey</span>
+            </div>
+            <div style={{ fontSize: 9.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', fontWeight: 600, lineHeight: 1 }}>
+              Reflective Journal
+            </div>
           </div>
         </div>
         <nav style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
@@ -909,6 +913,7 @@ function BookPrintable({ entries }) {
     <div className="rj-print">
       <div className="rj-print-page rj-print-cover">
         <div style={{ textAlign: 'center' }}>
+          <img src="assets/logo-magenta.png" alt="Haileybury" className="rj-print-logo"/>
           <div className="rj-print-eyebrow">A Reflective Journal</div>
           <h1 className="rj-print-title">The Haileybury <em>Odyssey</em></h1>
           <div className="rj-print-byline">Reflections, bound.</div>
