@@ -122,9 +122,20 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
     [...weekly, ...tutorial].forEach(e => (e.values || []).forEach(id => { if (counts[id] != null) counts[id] += 1; }));
     return counts;
   }, [weekly, tutorial]);
-  const maxCount = Math.max(1, ...Object.values(valueCounts));
+  const maxValueCount = Math.max(1, ...Object.values(valueCounts));
   const topValueId = Object.entries(valueCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
   const topValue = topValueId && valueCounts[topValueId] > 0 ? VALUE_BY_ID[topValueId] : null;
+
+  // Skill counts in parallel
+  const skillCounts = useMemo(() => {
+    const counts = Object.fromEntries(SKILLS.map(s => [s.id, 0]));
+    [...weekly, ...tutorial].forEach(e => (e.skills || []).forEach(id => { if (counts[id] != null) counts[id] += 1; }));
+    return counts;
+  }, [weekly, tutorial]);
+  const maxSkillCount = Math.max(1, ...Object.values(skillCounts));
+
+  const [compassMode, setCompassMode] = useState('values');
+  const isSkills = compassMode === 'skills';
 
   // Auto-summary paragraph (rule-based — real LLM summary is a future backend job)
   const summary = useMemo(() => {
@@ -205,15 +216,23 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
       <OrnamentDivider/>
 
-      {/* The Compass — framed card */}
+      {/* The Compass — framed card with Values/Skills toggle */}
       <div style={{ marginBottom: 10 }}>
         <SectionHeader eyebrow="Chapter II · The Compass" title="Which way are you growing?"/>
       </div>
       <FramedCard style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', textAlign: 'center', marginBottom: 14 }}>
-          Tag a value on a reflection or long tutorial and the needle turns toward it.
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+          <CompassToggle mode={compassMode} onChange={setCompassMode}/>
         </div>
-        <ValuesChart counts={valueCounts} max={maxCount}/>
+        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', textAlign: 'center', marginBottom: 14 }}>
+          {isSkills
+            ? 'Tag a skill on a reflection or long tutorial and the needle turns toward it.'
+            : 'Tag a value on a reflection or long tutorial and the needle turns toward it.'}
+        </div>
+        <ValuesChart
+          items={isSkills ? SKILLS : VALUES}
+          counts={isSkills ? skillCounts : valueCounts}
+          max={isSkills ? maxSkillCount : maxValueCount}/>
       </FramedCard>
 
       <OrnamentDivider/>
@@ -272,6 +291,35 @@ function SectionHeader({ eyebrow, title }) {
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
         {title}
       </h2>
+    </div>
+  );
+}
+
+// Pill-shaped Values/Skills toggle.
+function CompassToggle({ mode, onChange }) {
+  const opts = [{ id: 'values', label: 'Values' }, { id: 'skills', label: 'Skills' }];
+  return (
+    <div style={{
+      display: 'inline-flex', padding: 3, gap: 0,
+      background: '#f6ead0', border: '1px solid #d9c78a',
+      borderRadius: 999, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+    }}>
+      {opts.map(o => {
+        const active = mode === o.id;
+        return (
+          <button key={o.id} type="button" onClick={() => onChange(o.id)}
+            style={{
+              padding: '7px 18px', borderRadius: 999, border: 'none',
+              fontFamily: 'inherit', fontWeight: 700, fontSize: 11,
+              letterSpacing: '0.18em', textTransform: 'uppercase',
+              background: active ? '#9b1844' : 'transparent',
+              color: active ? '#fff' : '#8a6d2a',
+              cursor: 'pointer', transition: 'background .15s, color .15s',
+            }}>
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -345,26 +393,29 @@ function StatSeal({ label, value, accent }) {
 
 // A petal-bloom chart. Five teardrop petals radiate from the centre, each
 // value's petal length proportional to how often it has been tagged.
-// A compass rose. Five spear-point arms radiate from the centre pivot; arm
-// length is proportional to how often that value has been tagged. Degree
-// ring with tick marks, central pivot with compass star.
-function ValuesChart({ counts, max }) {
+// A compass rose. Spear-point arms radiate from the centre pivot; arm
+// length is proportional to how often that item has been tagged. Degree
+// ring with tick marks, central pivot with compass star. Renders any
+// ordered list of {id, label, color} via the `items` prop.
+function ValuesChart({ counts, max, items = VALUES }) {
+  const n = items.length;
   const size = 380;
   const cx = size / 2, cy = size / 2;
-  const pivotR   = 22;   // central gold pivot
-  const ringIn   = 138;  // inner edge of degree ring
-  const ringOut  = 148;  // outer edge of degree ring
-  const armMax   = 128;  // arm tip at count=max
-  const armMin   = 54;   // arm tip at count=0 (keep visible)
-  const armHalfW = 14;   // arm half-width at the base
-  const labelR   = 170;  // label ring (outside the degree ring)
+  const pivotR   = 22;
+  const ringIn   = 138;
+  const ringOut  = 148;
+  const armMax   = 128;
+  const armMin   = 54;
+  const armHalfW = n > 5 ? 11 : 14;     // narrower arms when there are more
+  const labelR   = 170;
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const stepDeg = 360 / n;
 
-  const arms = VALUES.map((v, i) => {
+  const arms = items.map((v, i) => {
     const count = counts[v.id] || 0;
     const ratio = max ? count / max : 0;
     const tip = armMin + (armMax - armMin) * ratio;
-    const angle = i * 72;                          // 0°, 72°, 144°, 216°, 288°
+    const angle = i * stepDeg;
     const rad = angle * Math.PI / 180;
     const labelX = Math.sin(rad) * labelR;
     const labelY = -Math.cos(rad) * labelR;
@@ -378,13 +429,16 @@ function ValuesChart({ counts, max }) {
   const armRight = (len) => `M 0 ${-pivotR + 2} L ${armHalfW} 0 L 0 ${-len} Z`;
   const armLeft  = (len) => `M 0 ${-pivotR + 2} L ${-armHalfW} 0 L 0 ${-len} Z`;
 
-  // Degree ring ticks: 40 total (every 9°), major at every value angle
-  const tickCount = 40;
+  // Degree ring ticks. We always draw 60 ticks (one every 6°). A tick is
+  // "major" if it falls on (or close to) one of our value bearings, "mid"
+  // every 30°, otherwise a fine tick.
+  const tickCount = 60;
+  const majorBearings = arms.map(a => a.angle);
   const ticks = Array.from({ length: tickCount }, (_, i) => {
     const a = i * (360 / tickCount);
     const rad = a * Math.PI / 180;
-    const isMajor = [0, 72, 144, 216, 288].includes(a);
-    const isMid   = !isMajor && a % 18 === 0;
+    const isMajor = majorBearings.some(b => Math.abs(((a - b + 540) % 360) - 180) > 179);
+    const isMid   = !isMajor && a % 30 === 0;
     const tickLen = isMajor ? 12 : isMid ? 7 : 4;
     const mid = (ringIn + ringOut) / 2;
     const r1 = mid - tickLen / 2;
@@ -455,14 +509,24 @@ function ValuesChart({ counts, max }) {
                   <circle cx="0" cy={-a.tip} r="2.2" fill={a.v.color} stroke="#fff" strokeWidth="0.75"/>
                 </g>
               </g>
-              {/* Label */}
+              {/* Label — supports 1- or 2-line names */}
               <g transform={`translate(${a.labelX} ${a.labelY})`}>
-                <text textAnchor="middle" dominantBaseline="middle" y={-8}
-                  fill={a.v.color} fontSize="10.5" fontWeight="700" letterSpacing="0.18em">
-                  {a.v.label.toUpperCase()}
-                </text>
-                <text textAnchor="middle" dominantBaseline="middle" y={10}
-                  fill={a.faded ? '#bab4a1' : '#1f1d1a'} fontSize="15" fontWeight="700"
+                {(() => {
+                  const lines = compassLabel(a.v.label);
+                  const fontSize = n > 5 ? 9 : 10.5;
+                  const lineH = fontSize + 1.5;
+                  const blockH = lines.length * lineH;
+                  const labelTop = -8 - (blockH - lineH);
+                  return lines.map((w, j) => (
+                    <text key={j} textAnchor="middle" dominantBaseline="middle"
+                      y={labelTop + j * lineH}
+                      fill={a.v.color} fontSize={fontSize} fontWeight="700" letterSpacing="0.16em">
+                      {w}
+                    </text>
+                  ));
+                })()}
+                <text textAnchor="middle" dominantBaseline="middle" y={n > 5 ? 9 : 10}
+                  fill={a.faded ? '#bab4a1' : '#1f1d1a'} fontSize={n > 5 ? 13 : 15} fontWeight="700"
                   style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {a.count}
                 </text>
@@ -571,7 +635,8 @@ function WeeklyCard({ entry, onEdit, onDelete }) {
             {entry.moment || 'Untitled'}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={`v-${id}`} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.skills || []).map(id => SKILL_BY_ID[id] && <ValueTag key={`s-${id}`} value={SKILL_BY_ID[id]} selected size="sm"/>)}
             {entry.mood && (
               <span style={{ padding: '4px 10px', borderRadius: 999, border: '1.5px solid #ec6608', background: '#fde5d0', color: '#ec6608', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {entry.mood}
@@ -633,6 +698,7 @@ function WeeklyForm({ onSave, onCancel, initial }) {
   const [date, setDate]       = useState(initial?.date   ?? todayISO());
   const [moment, setMoment]   = useState(initial?.moment ?? '');
   const [values, setValues]   = useState(initial?.values ?? []);
+  const [skills, setSkills]   = useState(initial?.skills ?? []);
   const [photo, setPhoto]     = useState(initial?.photo  ?? null);
   const [caption, setCaption] = useState(initial?.caption ?? '');
   const [proud, setProud]     = useState(initial?.proud  ?? '');
@@ -644,7 +710,7 @@ function WeeklyForm({ onSave, onCancel, initial }) {
     if (!canSave) return;
     onSave({
       kind: 'weekly', date, weekCommencing: weekCommencingISO(date),
-      moment: moment.trim(), values,
+      moment: moment.trim(), values, skills,
       photo, caption: caption.trim(),
       proud: proud.trim(), tricky: tricky.trim(), mood,
     });
@@ -667,6 +733,10 @@ function WeeklyForm({ onSave, onCancel, initial }) {
 
       <Field label="Values in this story" hint="Tap any that showed up.">
         <ValuePicker selected={values} onChange={setValues}/>
+      </Field>
+
+      <Field label="Skills you used or stretched" hint="Tap any that came into play.">
+        <ValuePicker selected={skills} onChange={setSkills} items={SKILLS}/>
       </Field>
 
       <Field label="Photo or sketch (optional)">
@@ -818,7 +888,8 @@ function TutorialCard({ entry, onEdit, onDelete }) {
             {entry.title || 'Untitled'}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={`v-${id}`} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.skills || []).map(id => SKILL_BY_ID[id] && <ValueTag key={`s-${id}`} value={SKILL_BY_ID[id]} selected size="sm"/>)}
           </div>
           {(entry.yellowTickets > 0 || entry.blueTickets > 0) && (
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -871,6 +942,7 @@ function TutorialForm({ onSave, onCancel, initial }) {
   const [story, setStory]             = useState(initial?.story       ?? '');
   const [shift, setShift]             = useState(initial?.shift       ?? '');
   const [values, setValues]           = useState(initial?.values      ?? []);
+  const [skills, setSkills]           = useState(initial?.skills      ?? []);
   const [photo, setPhoto]             = useState(initial?.photo       ?? null);
   const [caption, setCaption]         = useState(initial?.caption     ?? '');
   const [wentWell, setWentWell]       = useState(initial?.wentWell    ?? '');
@@ -885,7 +957,7 @@ function TutorialForm({ onSave, onCancel, initial }) {
     onSave({
       kind: 'tutorial', date, term,
       title: title.trim(), story: story.trim(), shift: shift.trim(),
-      values,
+      values, skills,
       photo, caption: caption.trim(),
       wentWell: wentWell.trim(), differently: differently.trim(), discuss: discuss.trim(),
       yellowTickets: Number(yellowTickets) || 0, blueTickets: Number(blueTickets) || 0,
@@ -925,6 +997,10 @@ function TutorialForm({ onSave, onCancel, initial }) {
 
       <Field label="Values this touches">
         <ValuePicker selected={values} onChange={setValues}/>
+      </Field>
+
+      <Field label="Skills you used or stretched" hint="Tap any that came into play.">
+        <ValuePicker selected={skills} onChange={setSkills} items={SKILLS}/>
       </Field>
 
       <Field label="Photo or sketch (optional)">
@@ -1171,6 +1247,15 @@ function PrintEntry({ entry }) {
           ))}
         </div>
       )}
+      {entry.skills?.length > 0 && (
+        <div className="rj-print-values">
+          {entry.skills.map(id => SKILL_BY_ID[id] && (
+            <span key={id} className="rj-print-tag" style={{ borderColor: SKILL_BY_ID[id].color, color: SKILL_BY_ID[id].color }}>
+              {SKILL_BY_ID[id].label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {entry.photo && (
         <figure className="rj-print-figure">
@@ -1249,10 +1334,18 @@ function BookSpread({ entry }) {
         )}
 
         {entry.values?.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 9.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, marginBottom: 8 }}>Values</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {entry.values.map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            </div>
+          </div>
+        )}
+        {entry.skills?.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 9.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, marginBottom: 8 }}>Skills</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {entry.skills.map(id => SKILL_BY_ID[id] && <ValueTag key={id} value={SKILL_BY_ID[id]} selected size="sm"/>)}
             </div>
           </div>
         )}
