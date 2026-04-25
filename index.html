@@ -24,10 +24,42 @@
   }
   * { box-sizing: border-box; }
   button { font-family: inherit; }
+  input, textarea, select { font-size: 16px; } /* prevent iOS focus-zoom */
   input:focus, textarea:focus, select:focus {
     outline: 2px solid #b9607d;
     outline-offset: 1px;
     border-color: #9b1844 !important;
+  }
+
+  /* ── Tablet / phone responsive pass (iPad portrait + below) ── */
+  @media (max-width: 960px) {
+    .rj-nav-inner { padding: 12px 16px !important; gap: 14px !important; }
+    .rj-nav-tabs button { padding: 7px 12px !important; font-size: 11px !important; }
+  }
+  @media (max-width: 720px) {
+    /* Saga: stack the book pages and hide the spine on narrow screens */
+    .rj-spread { grid-template-columns: 1fr !important; }
+    .rj-spread .rj-spine { display: none !important; }
+    .rj-spread .rj-page-left  { border-right: none !important; border-bottom: 1px solid rgba(155,24,68,0.08) !important; padding: 28px 22px !important; min-height: 0 !important; }
+    .rj-spread .rj-page-right { padding: 28px 22px !important; min-height: 0 !important; }
+
+    /* Card action row wraps under the title rather than overflowing */
+    .rj-card-actions { flex-wrap: wrap; }
+    .rj-card-actions button { padding: 8px 10px !important; min-height: 40px; }
+
+    /* Hero page tightens up */
+    .rj-hero-h1 { font-size: 36px !important; }
+    .rj-section-title { font-size: 22px !important; }
+
+    /* Logo banner reduces */
+    .rj-hero-logo { max-width: 480px !important; }
+
+    /* Form header save/cancel: full-width on small screens for finger taps */
+    .rj-form-header { flex-direction: column; align-items: stretch !important; }
+    .rj-form-header .rj-form-actions { justify-content: flex-end; }
+  }
+  @media (max-width: 480px) {
+    .rj-hero-h1 { font-size: 30px !important; }
   }
   /* Hide native number spinners — the NumberStepper has its own +/- controls */
   .num-stepper-input::-webkit-inner-spin-button,

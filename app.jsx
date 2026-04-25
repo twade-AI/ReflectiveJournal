@@ -82,7 +82,7 @@ function NavBar({ view, onNav, pupil }) {
       background: '#9b1844', color: '#fff',
       borderBottom: '3px solid #ec6608',
     }}>
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+      <div className="rj-nav-inner" style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <img src="assets/logo-white.png" alt="Haileybury"
             style={{ height: 44, width: 'auto', display: 'block' }}/>
@@ -95,7 +95,7 @@ function NavBar({ view, onNav, pupil }) {
             </div>
           </div>
         </div>
-        <nav style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
+        <nav className="rj-nav-tabs" style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => onNav(t.id)}
               style={{
@@ -236,7 +236,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
     <div>
       {/* Odyssey hero — no frame; multiply blends the logo's white background into the parchment */}
       <div style={{ margin: '-16px 0 0', textAlign: 'center' }}>
-        <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey"
+        <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey" className="rj-hero-logo"
           style={{
             width: '100%', maxWidth: 640, height: 'auto', display: 'block', margin: '0 auto',
             mixBlendMode: 'multiply',
@@ -250,7 +250,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
         <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 10 }}>
           Chapter I · The Hero
         </div>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+        <h1 className="rj-hero-h1" style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
           {pupil.name ? <>Hello, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>{pupil.name.split(' ')[0]}.</span></> : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
         </h1>
       </div>
@@ -363,7 +363,7 @@ function SectionHeader({ eyebrow, title }) {
   return (
     <div style={{ textAlign: 'center', marginBottom: 18 }}>
       <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 8 }}>{eyebrow}</div>
-      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
+      <h2 className="rj-section-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
         {title}
       </h2>
     </div>
@@ -915,7 +915,7 @@ function WeeklyCard({ entry, onEdit, onDelete }) {
             )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="rj-card-actions" style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
@@ -1098,12 +1098,12 @@ function MoodPicker({ value, onChange }) {
 function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+      <div className="rj-form-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>{eyebrow}</div>
           <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 38, fontWeight: 700, margin: 0, lineHeight: 1.05, letterSpacing: '-0.02em' }}>{title}</h1>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="rj-form-actions" style={{ display: 'flex', gap: 10 }}>
           {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
           <Button onClick={onSave} disabled={!canSave}>Save</Button>
         </div>
@@ -1228,7 +1228,7 @@ function TutorialCard({ entry, onEdit, onDelete }) {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="rj-card-actions" style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
@@ -1464,7 +1464,7 @@ function LibraryCard({ entry, onEdit, onDelete }) {
             <StarRating value={entry.rating || 0} size={18}/>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="rj-card-actions" style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
@@ -1963,7 +1963,7 @@ function BookSpread({ entry }) {
 
   if (isBook) {
     return (
-      <div style={{
+      <div className="rj-spread" style={{
         position: 'relative',
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) 16px minmax(0, 1fr)',
@@ -1972,7 +1972,7 @@ function BookSpread({ entry }) {
         background: '#c98508',
       }}>
         {/* Left page — cover, title, author, stars, date */}
-        <div style={{
+        <div className="rj-page-left" style={{
           background: pageBg, padding: '36px 34px 36px 38px',
           minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center', gap: 18,
@@ -1993,12 +1993,12 @@ function BookSpread({ entry }) {
         </div>
 
         {/* Spine */}
-        <div style={{
+        <div className="rj-spine" style={{
           background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
         }}/>
 
         {/* Right page — review */}
-        <div style={{
+        <div className="rj-page-right" style={{
           background: pageBg, padding: '36px 38px 36px 34px',
           minHeight: 520,
         }}>
@@ -2026,7 +2026,7 @@ function BookSpread({ entry }) {
       background: '#c98508',
     }}>
       {/* Left page */}
-      <div style={{
+      <div className="rj-page-left" style={{
         background: pageBg, padding: '36px 34px 36px 38px',
         minHeight: 520,
         borderRight: '1px solid rgba(155,24,68,0.08)',
@@ -2080,12 +2080,12 @@ function BookSpread({ entry }) {
       </div>
 
       {/* Spine */}
-      <div style={{
+      <div className="rj-spine" style={{
         background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
       }}/>
 
       {/* Right page */}
-      <div style={{
+      <div className="rj-page-right" style={{
         background: pageBg, padding: '36px 38px 36px 34px',
         minHeight: 520, display: 'flex', flexDirection: 'column', gap: 18,
       }}>
