@@ -674,73 +674,118 @@ function ValuesChart({ counts, max, items = VALUES, history }) {
 }
 
 // Reusable filter bar: keyword search + month dropdown + value/skill chips.
-// Pass `kind="library"` to hide the value/skill chip rows.
+// Collapsed by default — clicking the header expands the full panel. Active
+// filters show a count badge next to the toggle so they're visible even when
+// collapsed.
 function FilterBar({ filter, onChange, kind = 'reflection', availableMonths = [] }) {
+  const activeCount =
+    ((filter.q || '').trim() ? 1 : 0) +
+    ((filter.month || '') ? 1 : 0) +
+    (filter.values?.length || 0) +
+    (filter.skills?.length || 0);
+  const [expanded, setExpanded] = useState(activeCount > 0);
+
   const set = (patch) => onChange({ ...filter, ...patch });
   const toggleId = (key, id) => {
     const arr = filter[key] || [];
     set({ [key]: arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id] });
   };
   const clear = () => onChange({ q: '', month: '', values: [], skills: [] });
-  const isActive = (filter.q || '') !== '' || (filter.month || '') !== ''
-    || (filter.values?.length || 0) > 0 || (filter.skills?.length || 0) > 0;
 
   return (
     <div style={{
       background: 'rgba(255,255,255,0.6)', border: '1px solid #e3dcc8',
-      borderRadius: 12, padding: 14, marginBottom: 16,
-      display: 'flex', flexDirection: 'column', gap: 10,
+      borderRadius: 12, marginBottom: 16, overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          type="search"
-          value={filter.q || ''}
-          onChange={(e) => set({ q: e.target.value })}
-          placeholder={kind === 'library' ? 'Search by title, author, or review…' : 'Search keywords…'}
-          style={{
-            flex: 1, minWidth: 180, padding: '9px 12px',
-            border: '1px solid #e3dcc8', borderRadius: 8,
-            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
-          }}/>
-        <select value={filter.month || ''} onChange={(e) => set({ month: e.target.value })}
-          style={{
-            padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
-            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
-            minWidth: 160,
-          }}>
-          <option value="">All months</option>
-          {availableMonths.map(m => (
-            <option key={m} value={m}>{formatMonth(m)}</option>
-          ))}
-        </select>
-        {isActive && (
-          <button type="button" onClick={clear}
-            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 8px' }}>
-            Clear
-          </button>
-        )}
-      </div>
-      {kind !== 'library' && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Values</span>
-            {VALUES.map(v => (
-              <ValueTag key={v.id} value={v}
-                selected={(filter.values || []).includes(v.id)}
-                onToggle={() => toggleId('values', v.id)}
-                size="sm"/>
-            ))}
+      {/* Header / toggle */}
+      <button type="button" onClick={() => setExpanded(e => !e)}
+        style={{
+          width: '100%', padding: '10px 14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', textAlign: 'left',
+        }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9b1844" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18M6 12h12M10 18h4"/>
+          </svg>
+          <span style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700 }}>
+            Search & filter
+          </span>
+          {activeCount > 0 && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+              background: '#9b1844', color: '#fff',
+              padding: '2px 8px', borderRadius: 999,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {activeCount} active
+            </span>
+          )}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {activeCount > 0 && (
+            <span onClick={(e) => { e.stopPropagation(); clear(); }}
+              style={{ color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '4px 6px' }}>
+              Clear
+            </span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#9b1844" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transition: 'transform .15s', transform: expanded ? 'rotate(180deg)' : 'none' }}>
+            <path d="M2 4l4 4 4-4"/>
+          </svg>
+        </span>
+      </button>
+
+      {/* Body */}
+      {expanded && (
+        <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #efe9d9' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+            <input
+              type="search"
+              value={filter.q || ''}
+              onChange={(e) => set({ q: e.target.value })}
+              placeholder={kind === 'library' ? 'Search by title, author, or review…' : 'Search keywords…'}
+              style={{
+                flex: 1, minWidth: 180, padding: '9px 12px',
+                border: '1px solid #e3dcc8', borderRadius: 8,
+                fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+              }}/>
+            <select value={filter.month || ''} onChange={(e) => set({ month: e.target.value })}
+              style={{
+                padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+                fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+                minWidth: 160,
+              }}>
+              <option value="">All months</option>
+              {availableMonths.map(m => (
+                <option key={m} value={m}>{formatMonth(m)}</option>
+              ))}
+            </select>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Skills</span>
-            {SKILLS.map(s => (
-              <ValueTag key={s.id} value={s}
-                selected={(filter.skills || []).includes(s.id)}
-                onToggle={() => toggleId('skills', s.id)}
-                size="sm"/>
-            ))}
-          </div>
-        </>
+          {kind !== 'library' && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Values</span>
+                {VALUES.map(v => (
+                  <ValueTag key={v.id} value={v}
+                    selected={(filter.values || []).includes(v.id)}
+                    onToggle={() => toggleId('values', v.id)}
+                    size="sm"/>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Skills</span>
+                {SKILLS.map(s => (
+                  <ValueTag key={s.id} value={s}
+                    selected={(filter.skills || []).includes(s.id)}
+                    onToggle={() => toggleId('skills', s.id)}
+                    size="sm"/>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
