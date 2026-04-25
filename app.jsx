@@ -271,6 +271,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8, justifyContent: 'center' }}>
         <Button onClick={() => onNav('weekly')}>+ New reflection</Button>
         <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for long tutorial</Button>
+        <Button variant="outline" onClick={() => onNav('library')}>+ Log a book</Button>
       </div>
 
       <OrnamentDivider/>
@@ -1587,9 +1588,7 @@ function BookView({ state }) {
         <EmptyState label="No chapters in your saga yet."/>
       ) : (
         <>
-          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="outline" onClick={() => window.print()}>Export to PDF</Button>
-          </div>
+          <ExportControls entries={entries} state={state}/>
           <BookSpread entry={entry}/>
           <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
@@ -1598,23 +1597,71 @@ function BookView({ state }) {
             </div>
             <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
           </div>
-
-          {/* Print-only layout: all reflections as full pages */}
-          <BookPrintable entries={entries}/>
         </>
       )}
     </div>
   );
 }
 
+// Saga export controls. Two modes:
+//   - Full: every entry, with a generic cover.
+//   - Since last tutorial: only entries written AFTER the most recent
+//     long-tutorial entry's date — exactly what the pupil + tutor need
+//     at the next meeting.
+function ExportControls({ entries, state }) {
+  const [printMode, setPrintMode] = useState('all');
+  const [printPending, setPrintPending] = useState(false);
+
+  const lastTutorial = useMemo(() => {
+    return [...(state.tutorial || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+  }, [state.tutorial]);
+  const sinceDate = lastTutorial?.date || null;
+
+  const filteredEntries = useMemo(() => {
+    if (printMode !== 'sinceLast' || !sinceDate) return entries;
+    return entries.filter(e => (e.date || '') > sinceDate);
+  }, [entries, printMode, sinceDate]);
+
+  // Trigger window.print after the DOM has actually rendered the new mode
+  useEffect(() => {
+    if (!printPending) return;
+    const id = requestAnimationFrame(() => {
+      window.print();
+      setPrintPending(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [printPending, printMode]);
+
+  const exportAll = () => { setPrintMode('all'); setPrintPending(true); };
+  const exportSinceLast = () => { setPrintMode('sinceLast'); setPrintPending(true); };
+
+  return (
+    <>
+      <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+        {sinceDate && (
+          <Button variant="outline" onClick={exportSinceLast}>
+            Export since last long tutorial
+          </Button>
+        )}
+        <Button variant="outline" onClick={exportAll}>Export all to PDF</Button>
+      </div>
+      <BookPrintable
+        entries={filteredEntries}
+        sinceLabel={printMode === 'sinceLast' ? `Since last long tutorial · ${formatDate(sinceDate)}` : null}/>
+    </>
+  );
+}
+
 // ─── Printable book layout (visible only via @media print) ───
-function BookPrintable({ entries }) {
+function BookPrintable({ entries, sinceLabel }) {
   return (
     <div className="rj-print">
       <div className="rj-print-page rj-print-cover">
         <div style={{ textAlign: 'center' }}>
           <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey" className="rj-print-hero"/>
-          <div className="rj-print-byline">A Reflective Journal · Reflections, bound.</div>
+          <div className="rj-print-byline">
+            {sinceLabel || 'A Reflective Journal · Reflections, bound.'}
+          </div>
         </div>
       </div>
       {entries.map(e => (
