@@ -6,7 +6,7 @@ const { useState, useEffect, useMemo } = React;
 
 // ─── Storage ──────────────────────────────────────────────────
 const STORAGE_KEY = 'haileybury-journal-v1';
-const EMPTY = { pupil: { name: '', year: '', house: '', tutor: '' }, weekly: [], tutorial: [] };
+const EMPTY = { pupil: { name: '', year: '', house: '', tutor: '' }, weekly: [], tutorial: [], books: [] };
 
 function useJournal() {
   const [state, setState] = useState(() => {
@@ -32,9 +32,11 @@ function App() {
   const patch = (fn) => setState(fn);
   const addWeekly      = (e) => patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));
   const addTutorial    = (e) => patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));
+  const addBook        = (e) => patch(s => ({ ...s, books:    [{ ...e, id: newId() }, ...(s.books || [])] }));
   const updateWeekly   = (id, e) => patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) }));
   const updateTutorial = (id, e) => patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) }));
-  const removeEntry    = (kind, id) => patch(s => ({ ...s, [kind]: s[kind].filter(x => x.id !== id) }));
+  const updateBook     = (id, e) => patch(s => ({ ...s, books:    (s.books || []).map(x => x.id === id ? { ...x, ...e } : x) }));
+  const removeEntry    = (kind, id) => patch(s => ({ ...s, [kind]: (s[kind] || []).filter(x => x.id !== id) }));
   const setPupil       = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
 
   return (
@@ -46,8 +48,9 @@ function App() {
       <NavBar view={view} onNav={setView} pupil={state.pupil}/>
       <main style={{ maxWidth: 1040, margin: '0 auto', padding: '40px 24px 80px' }}>
         {view === 'profile'   && <ProfileView   state={state} onNav={setView} onUpdatePupil={setPupil}/>}
-        {view === 'weekly'    && <WeeklyView    entries={state.weekly}   onAdd={addWeekly}   onUpdate={updateWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
-        {view === 'tutorial'  && <TutorialView  entries={state.tutorial} onAdd={addTutorial} onUpdate={updateTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
+        {view === 'weekly'    && <WeeklyView    entries={state.weekly}      onAdd={addWeekly}   onUpdate={updateWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
+        {view === 'tutorial'  && <TutorialView  entries={state.tutorial}    onAdd={addTutorial} onUpdate={updateTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
+        {view === 'library'   && <LibraryView   entries={state.books || []} onAdd={addBook}     onUpdate={updateBook}     onDelete={(id) => removeEntry('books', id)}/>}
         {view === 'scrapbook' && <ScrapbookView state={state}/>}
         {view === 'book'      && <BookView      state={state}/>}
       </main>
@@ -61,6 +64,7 @@ function NavBar({ view, onNav, pupil }) {
     { id: 'profile',   label: 'The Hero' },
     { id: 'weekly',    label: 'Reflections' },
     { id: 'tutorial',  label: 'Long Tutorials' },
+    { id: 'library',   label: 'The Library' },
     { id: 'scrapbook', label: 'Relics' },
     { id: 'book',      label: 'The Saga' },
   ];
@@ -111,8 +115,10 @@ function NavBar({ view, onNav, pupil }) {
 // ─── Profile view ─────────────────────────────────────────────
 function ProfileView({ state, onNav, onUpdatePupil }) {
   const { pupil, weekly, tutorial } = state;
+  const books = state.books || [];
   const totalWeekly = weekly.length;
   const totalTutorial = tutorial.length;
+  const totalBooks = books.length;
   const yellowTotal = tutorial.reduce((n, e) => n + (e.yellowTickets || 0), 0);
   const blueTotal   = tutorial.reduce((n, e) => n + (e.blueTickets   || 0), 0);
 
@@ -140,9 +146,9 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
   // Auto-summary paragraph (rule-based — real LLM summary is a future backend job)
   const summary = useMemo(() => {
     const name = pupil.name ? pupil.name.split(' ')[0] : 'You';
-    if (totalWeekly + totalTutorial === 0) return `${name} hasn't set off on the journey yet. Write your first reflection to begin.`;
+    if (totalWeekly + totalTutorial + totalBooks === 0) return `${name} hasn't set off on the journey yet. Write your first reflection or log a book to begin.`;
     const bits = [];
-    bits.push(`${name} has logged ${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'} and ${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'} so far.`);
+    bits.push(`${name} has logged ${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'}, ${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'}, and read ${totalBooks} book${totalBooks === 1 ? '' : 's'} so far.`);
     if (topValue && valueCounts[topValueId] >= 2) {
       bits.push(`The compass points strongest to ${topValue.label.toLowerCase()} — in ${valueCounts[topValueId]} entries.`);
     }
@@ -155,7 +161,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
       if (title) bits.push(`Most recent chapter: "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}"`);
     }
     return bits.join(' ');
-  }, [pupil, weekly, tutorial, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial]);
+  }, [pupil, weekly, tutorial, books, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial, totalBooks]);
 
   const firstLetter = summary.charAt(0);
   const restSummary = summary.slice(1);
@@ -207,9 +213,10 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
       <div style={{ marginBottom: 10 }}>
         <SectionHeader eyebrow="The Ledger" title="Your year, in numbers."/>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14, marginBottom: 8 }}>
         <StatSeal label="Reflections"    value={totalWeekly}   accent="#9b1844"/>
         <StatSeal label="Long tutorials" value={totalTutorial} accent="#9b1844"/>
+        <StatSeal label="Books read"     value={totalBooks}    accent="#558b3f"/>
         <StatSeal label="Yellow tickets" value={yellowTotal}   accent="#c98508"/>
         <StatSeal label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
       </div>
@@ -1029,6 +1036,242 @@ function TutorialForm({ onSave, onCancel, initial }) {
         </div>
       </div>
     </FormShell>
+  );
+}
+
+// ─── The Library (reading log) ───────────────────────────────
+function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
+  const [composing, setComposing] = useState(entries.length === 0);
+  const [editingId, setEditingId] = useState(null);
+
+  if (composing) {
+    return (
+      <BookForm
+        onCancel={entries.length > 0 ? () => setComposing(false) : null}
+        onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
+    );
+  }
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      return (
+        <BookForm
+          initial={entry}
+          onCancel={() => setEditingId(null)}
+          onSave={(patch) => { onUpdate(editingId, patch); setEditingId(null); }}/>
+      );
+    }
+  }
+
+  const avg = entries.length ? (entries.reduce((s, e) => s + (e.rating || 0), 0) / entries.length) : 0;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>The Library</div>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+            Books along <span style={{ fontStyle: 'italic', color: '#9b1844' }}>the way.</span>
+          </h1>
+          <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
+            Log every book you read. Title, author, a quick review, your rating. Add a cover if you'd like.
+          </p>
+        </div>
+        <Button onClick={() => setComposing(true)}>+ New book</Button>
+      </div>
+
+      {entries.length > 0 && (
+        <div style={{ display: 'flex', gap: 14, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700 }}>
+            {entries.length} book{entries.length === 1 ? '' : 's'} read
+          </span>
+          {avg > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5f5a52' }}>
+              Average rating <StarRating value={Math.round(avg)} size={16}/>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#c98508' }}>{avg.toFixed(1)}</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      {entries.length === 0 ? (
+        <EmptyState label="No books logged yet."/>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {entries.map(e => (
+            <LibraryCard key={e.id} entry={e}
+              onEdit={() => setEditingId(e.id)}
+              onDelete={() => onDelete(e.id)}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LibraryCard({ entry, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr auto', gap: 16, alignItems: 'flex-start' }}>
+        <BookCover photo={entry.photo} title={entry.title} small/>
+        <div>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#558b3f', fontWeight: 700, marginBottom: 6 }}>
+            Book · {formatDate(entry.date)}
+          </div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: '#1f1d1a', fontStyle: 'italic', lineHeight: 1.25 }}>
+            {entry.title || 'Untitled'}
+          </div>
+          {entry.author && (
+            <div style={{ fontSize: 13, color: '#5f5a52', fontStyle: 'italic', marginTop: 2 }}>
+              by {entry.author}
+            </div>
+          )}
+          <div style={{ marginTop: 10 }}>
+            <StarRating value={entry.rating || 0} size={18}/>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => setOpen(o => !o)}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onEdit}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            Edit
+          </button>
+          <button onClick={onDelete} title="Delete"
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
+            {Icons.trash}
+          </button>
+        </div>
+      </div>
+      {open && entry.review && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #efe9d9' }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 14.5, color: '#1f1d1a', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+            {entry.review}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function BookForm({ onSave, onCancel, initial }) {
+  const editing = !!initial;
+  const [date, setDate]     = useState(initial?.date   ?? todayISO());
+  const [title, setTitle]   = useState(initial?.title  ?? '');
+  const [author, setAuthor] = useState(initial?.author ?? '');
+  const [rating, setRating] = useState(initial?.rating ?? 0);
+  const [review, setReview] = useState(initial?.review ?? '');
+  const [photo, setPhoto]   = useState(initial?.photo  ?? null);
+
+  const canSave = title.trim().length > 0 && author.trim().length > 0;
+  const save = () => {
+    if (!canSave) return;
+    onSave({
+      kind: 'book', date,
+      title: title.trim(), author: author.trim(),
+      rating: Number(rating) || 0,
+      review: review.trim(),
+      photo,
+    });
+  };
+
+  return (
+    <FormShell
+      eyebrow={editing ? 'Edit Book' : 'New Book'}
+      title={editing
+        ? <>Edit this <span style={{ fontStyle: 'italic', color: '#9b1844' }}>book.</span></>
+        : <>Log a <span style={{ fontStyle: 'italic', color: '#9b1844' }}>book.</span></>}
+      onCancel={onCancel}
+      onSave={save}
+      canSave={canSave}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+        <Field label="Title"><TextInput value={title} onChange={setTitle} placeholder="e.g. The Hobbit"/></Field>
+        <Field label="Author"><TextInput value={author} onChange={setAuthor} placeholder="e.g. J. R. R. Tolkien"/></Field>
+      </div>
+
+      <Field label="Date finished"><TextInput type="date" value={date} onChange={setDate}/></Field>
+
+      <Field label="Rating">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <StarRating value={rating} onChange={setRating} size={28}/>
+          {rating > 0 && (
+            <span style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>
+              {rating} of 5
+            </span>
+          )}
+        </div>
+      </Field>
+
+      <Field label="Review" hint="What did you think? Who would you recommend it to?">
+        <TextArea value={review} onChange={setReview} rows={6} placeholder="A few lines…"/>
+      </Field>
+
+      <Field label="Cover photo (optional)">
+        <PhotoUpload value={photo} onChange={setPhoto}/>
+      </Field>
+    </FormShell>
+  );
+}
+
+// Five-star clickable rating (read-only when onChange is not passed).
+function StarRating({ value = 0, onChange, size = 22, color = '#c98508' }) {
+  const interactive = typeof onChange === 'function';
+  return (
+    <div style={{ display: 'inline-flex', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map(n => {
+        const filled = n <= value;
+        return (
+          <button key={n} type="button"
+            aria-label={`${n} of 5 stars`}
+            onClick={interactive ? () => onChange(n === value ? 0 : n) : undefined}
+            disabled={!interactive}
+            style={{
+              border: 'none', background: 'transparent', padding: 1,
+              cursor: interactive ? 'pointer' : 'default',
+              lineHeight: 0,
+            }}>
+            <svg width={size} height={size} viewBox="0 0 24 24"
+              fill={filled ? color : 'none'} stroke={color} strokeWidth="1.4"
+              strokeLinejoin="round">
+              <path d="M 12 2.5 L 14.6 8.6 L 21.5 9.3 L 16.4 14.1 L 17.8 21 L 12 17.5 L 6.2 21 L 7.6 14.1 L 2.5 9.3 L 9.4 8.6 Z"/>
+            </svg>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Book cover thumbnail, with a magenta placeholder when no photo is present.
+function BookCover({ photo, title, small }) {
+  const w = small ? 90 : 140;
+  const h = small ? 130 : 200;
+  if (photo) {
+    return (
+      <img src={photo} alt={title || ''}
+        style={{ width: w, height: h, objectFit: 'cover', borderRadius: 4, boxShadow: '0 2px 8px rgba(31,29,26,0.18)' }}/>
+    );
+  }
+  return (
+    <div style={{
+      width: w, height: h, borderRadius: 4,
+      background: 'linear-gradient(135deg, #9b1844 0%, #6c0d2c 100%)',
+      color: '#fbf5e4', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+      padding: '8px', boxShadow: '0 2px 8px rgba(31,29,26,0.18)',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', inset: 4, border: '0.5px solid rgba(251,245,228,0.4)', borderRadius: 2, pointerEvents: 'none' }}/>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.7" style={{ marginBottom: 6 }}>
+        <path d="M4 4v16h12a4 4 0 014-4V4H4zM8 4v16M8 12h12"/>
+      </svg>
+      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: small ? 10.5 : 13, fontStyle: 'italic', lineHeight: 1.2 }}>
+        {(title || 'Untitled').slice(0, 32)}{(title || '').length > 32 ? '…' : ''}
+      </div>
+    </div>
   );
 }
 
