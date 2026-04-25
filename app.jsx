@@ -36,16 +36,45 @@ function joinList(parts) {
 function App() {
   const [state, setState] = useJournal();
   const [view, setView] = useState('profile');
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = React.useRef(null);
+
+  const showToast = (msg, opts) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ msg, ...(opts || {}) });
+    toastTimerRef.current = setTimeout(() => setToast(null), opts?.durationMs ?? 4000);
+  };
+  const dismissToast = () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(null);
+  };
 
   const patch = (fn) => setState(fn);
-  const addWeekly      = (e) => patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));
-  const addTutorial    = (e) => patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));
-  const addBook        = (e) => patch(s => ({ ...s, books:    [{ ...e, id: newId() }, ...(s.books || [])] }));
-  const updateWeekly   = (id, e) => patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) }));
-  const updateTutorial = (id, e) => patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) }));
-  const updateBook     = (id, e) => patch(s => ({ ...s, books:    (s.books || []).map(x => x.id === id ? { ...x, ...e } : x) }));
-  const removeEntry    = (kind, id) => patch(s => ({ ...s, [kind]: (s[kind] || []).filter(x => x.id !== id) }));
-  const setPupil       = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
+  const addWeekly      = (e) => { patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));         showToast('Reflection saved'); };
+  const addTutorial    = (e) => { patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));        showToast('Long tutorial saved'); };
+  const addBook        = (e) => { patch(s => ({ ...s, books:    [{ ...e, id: newId() }, ...(s.books || [])] }));   showToast('Book saved'); };
+  const updateWeekly   = (id, e) => { patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) })); showToast('Reflection updated'); };
+  const updateTutorial = (id, e) => { patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) })); showToast('Long tutorial updated'); };
+  const updateBook     = (id, e) => { patch(s => ({ ...s, books:    (s.books || []).map(x => x.id === id ? { ...x, ...e } : x) })); showToast('Book updated'); };
+
+  // Delete with undo: actually remove the entry, but keep a copy in the toast
+  // so the user can put it back within 6 seconds.
+  const removeEntry = (kind, id) => {
+    const entry = (state[kind] || []).find(x => x.id === id);
+    if (!entry) return;
+    patch(s => ({ ...s, [kind]: (s[kind] || []).filter(x => x.id !== id) }));
+    const label = kind === 'tutorial' ? 'Long tutorial' : kind === 'books' ? 'Book' : 'Reflection';
+    showToast(`${label} deleted`, {
+      durationMs: 6000,
+      undo: () => {
+        // Re-insert with original id at the top of the list
+        patch(s => ({ ...s, [kind]: [entry, ...(s[kind] || [])] }));
+        dismissToast();
+      },
+    });
+  };
+
+  const setPupil = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
 
   return (
     <div style={{
@@ -62,6 +91,41 @@ function App() {
         {view === 'scrapbook' && <ScrapbookView state={state}/>}
         {view === 'book'      && <BookView      state={state}/>}
       </main>
+      {toast && <Toast toast={toast} onDismiss={dismissToast}/>}
+    </div>
+  );
+}
+
+// Bottom-anchored toast with optional Undo action.
+function Toast({ toast, onDismiss }) {
+  return (
+    <div style={{
+      position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)',
+      zIndex: 100,
+      background: '#1f1d1a', color: '#fbf5e4',
+      padding: '12px 14px 12px 18px', borderRadius: 10,
+      display: 'flex', alignItems: 'center', gap: 14,
+      boxShadow: '0 12px 32px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.2)',
+      fontFamily: "'Calluna Sans', 'Lato', system-ui, sans-serif",
+      fontSize: 14, fontWeight: 500, maxWidth: 'calc(100vw - 32px)',
+    }}>
+      <span>{toast.msg}</span>
+      {toast.undo && (
+        <button onClick={toast.undo}
+          style={{
+            border: 'none', background: 'transparent', color: '#e8a935',
+            fontFamily: 'inherit', fontWeight: 700, fontSize: 12,
+            letterSpacing: '0.16em', textTransform: 'uppercase',
+            cursor: 'pointer', padding: '4px 8px',
+          }}>
+          Undo
+        </button>
+      )}
+      <button onClick={onDismiss} aria-label="Dismiss"
+        style={{
+          border: 'none', background: 'transparent', color: 'rgba(251,245,228,0.6)',
+          cursor: 'pointer', padding: '4px 6px', fontSize: 16, lineHeight: 1,
+        }}>×</button>
     </div>
   );
 }
