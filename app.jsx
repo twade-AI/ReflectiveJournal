@@ -791,6 +791,53 @@ function FilterBar({ filter, onChange, kind = 'reflection', availableMonths = []
   );
 }
 
+// Bucket an ISO date string into a human label relative to today.
+function dateBucket(iso) {
+  if (!iso) return 'Undated';
+  const d = new Date(iso + 'T00:00:00');
+  if (Number.isNaN(+d)) return 'Undated';
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const weekAgo = new Date(start); weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const yearStart = new Date(today.getFullYear(), 0, 1);
+  if (d >= weekAgo)    return 'This week';
+  if (d >= monthStart) return 'Earlier this month';
+  if (d >= yearStart)  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+// Walk a sorted entry list and emit a list of { type, ... } items so that
+// each group of consecutive same-bucket entries gets a heading row.
+function groupEntries(entries) {
+  const out = [];
+  let lastBucket = null;
+  for (const e of entries) {
+    const b = dateBucket(e.date);
+    if (b !== lastBucket) {
+      out.push({ type: 'heading', label: b, key: `h-${b}-${e.id || ''}` });
+      lastBucket = b;
+    }
+    out.push({ type: 'entry', entry: e, key: e.id });
+  }
+  return out;
+}
+
+// Heading row used inside grouped lists.
+function DateHeading({ label }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, marginBottom: -4,
+    }}>
+      <span style={{
+        fontSize: 10, letterSpacing: '0.28em', textTransform: 'uppercase',
+        color: '#8a6d2a', fontWeight: 700,
+      }}>{label}</span>
+      <span style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, #d9c78a 0%, transparent 100%)' }}/>
+    </div>
+  );
+}
+
 // Render an ISO YYYY-MM string as e.g. "October 2026"
 function formatMonth(ym) {
   if (!ym) return '';
@@ -880,11 +927,15 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
             <EmptyState label="No reflections match those filters."/>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {filtered.map(e => (
-                <WeeklyCard key={e.id} entry={e}
-                  onEdit={() => setEditingId(e.id)}
-                  onDelete={() => onDelete(e.id)}/>
-              ))}
+              {groupEntries(filtered).map(item =>
+                item.type === 'heading' ? (
+                  <DateHeading key={item.key} label={item.label}/>
+                ) : (
+                  <WeeklyCard key={item.key} entry={item.entry}
+                    onEdit={() => setEditingId(item.entry.id)}
+                    onDelete={() => onDelete(item.entry.id)}/>
+                )
+              )}
             </div>
           )}
         </>
@@ -1183,11 +1234,15 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
             <EmptyState label="No long tutorials match those filters."/>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {filtered.map(e => (
-                <TutorialCard key={e.id} entry={e}
-                  onEdit={() => setEditingId(e.id)}
-                  onDelete={() => onDelete(e.id)}/>
-              ))}
+              {groupEntries(filtered).map(item =>
+                item.type === 'heading' ? (
+                  <DateHeading key={item.key} label={item.label}/>
+                ) : (
+                  <TutorialCard key={item.key} entry={item.entry}
+                    onEdit={() => setEditingId(item.entry.id)}
+                    onDelete={() => onDelete(item.entry.id)}/>
+                )
+              )}
             </div>
           )}
         </>
@@ -1429,11 +1484,15 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
             <EmptyState label="No books match those filters."/>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {filtered.map(e => (
-                <LibraryCard key={e.id} entry={e}
-                  onEdit={() => setEditingId(e.id)}
-                  onDelete={() => onDelete(e.id)}/>
-              ))}
+              {groupEntries(filtered).map(item =>
+                item.type === 'heading' ? (
+                  <DateHeading key={item.key} label={item.label}/>
+                ) : (
+                  <LibraryCard key={item.key} entry={item.entry}
+                    onEdit={() => setEditingId(item.entry.id)}
+                    onDelete={() => onDelete(item.entry.id)}/>
+                )
+              )}
             </div>
           )}
         </>
