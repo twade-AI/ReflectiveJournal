@@ -36,16 +36,45 @@ function joinList(parts) {
 function App() {
   const [state, setState] = useJournal();
   const [view, setView] = useState('profile');
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = React.useRef(null);
+
+  const showToast = (msg, opts) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ msg, ...(opts || {}) });
+    toastTimerRef.current = setTimeout(() => setToast(null), opts?.durationMs ?? 4000);
+  };
+  const dismissToast = () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(null);
+  };
 
   const patch = (fn) => setState(fn);
-  const addWeekly      = (e) => patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));
-  const addTutorial    = (e) => patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));
-  const addBook        = (e) => patch(s => ({ ...s, books:    [{ ...e, id: newId() }, ...(s.books || [])] }));
-  const updateWeekly   = (id, e) => patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) }));
-  const updateTutorial = (id, e) => patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) }));
-  const updateBook     = (id, e) => patch(s => ({ ...s, books:    (s.books || []).map(x => x.id === id ? { ...x, ...e } : x) }));
-  const removeEntry    = (kind, id) => patch(s => ({ ...s, [kind]: (s[kind] || []).filter(x => x.id !== id) }));
-  const setPupil       = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
+  const addWeekly      = (e) => { patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));         showToast('Reflection saved'); };
+  const addTutorial    = (e) => { patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));        showToast('Long tutorial saved'); };
+  const addBook        = (e) => { patch(s => ({ ...s, books:    [{ ...e, id: newId() }, ...(s.books || [])] }));   showToast('Book saved'); };
+  const updateWeekly   = (id, e) => { patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) })); showToast('Reflection updated'); };
+  const updateTutorial = (id, e) => { patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) })); showToast('Long tutorial updated'); };
+  const updateBook     = (id, e) => { patch(s => ({ ...s, books:    (s.books || []).map(x => x.id === id ? { ...x, ...e } : x) })); showToast('Book updated'); };
+
+  // Delete with undo: actually remove the entry, but keep a copy in the toast
+  // so the user can put it back within 6 seconds.
+  const removeEntry = (kind, id) => {
+    const entry = (state[kind] || []).find(x => x.id === id);
+    if (!entry) return;
+    patch(s => ({ ...s, [kind]: (s[kind] || []).filter(x => x.id !== id) }));
+    const label = kind === 'tutorial' ? 'Long tutorial' : kind === 'books' ? 'Book' : 'Reflection';
+    showToast(`${label} deleted`, {
+      durationMs: 6000,
+      undo: () => {
+        // Re-insert with original id at the top of the list
+        patch(s => ({ ...s, [kind]: [entry, ...(s[kind] || [])] }));
+        dismissToast();
+      },
+    });
+  };
+
+  const setPupil = (p) => patch(s => ({ ...s, pupil: { ...s.pupil, ...p } }));
 
   return (
     <div style={{
@@ -62,6 +91,41 @@ function App() {
         {view === 'scrapbook' && <ScrapbookView state={state}/>}
         {view === 'book'      && <BookView      state={state}/>}
       </main>
+      {toast && <Toast toast={toast} onDismiss={dismissToast}/>}
+    </div>
+  );
+}
+
+// Bottom-anchored toast with optional Undo action.
+function Toast({ toast, onDismiss }) {
+  return (
+    <div style={{
+      position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)',
+      zIndex: 100,
+      background: '#1f1d1a', color: '#fbf5e4',
+      padding: '12px 14px 12px 18px', borderRadius: 10,
+      display: 'flex', alignItems: 'center', gap: 14,
+      boxShadow: '0 12px 32px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.2)',
+      fontFamily: "'Calluna Sans', 'Lato', system-ui, sans-serif",
+      fontSize: 14, fontWeight: 500, maxWidth: 'calc(100vw - 32px)',
+    }}>
+      <span>{toast.msg}</span>
+      {toast.undo && (
+        <button onClick={toast.undo}
+          style={{
+            border: 'none', background: 'transparent', color: '#e8a935',
+            fontFamily: 'inherit', fontWeight: 700, fontSize: 12,
+            letterSpacing: '0.16em', textTransform: 'uppercase',
+            cursor: 'pointer', padding: '4px 8px',
+          }}>
+          Undo
+        </button>
+      )}
+      <button onClick={onDismiss} aria-label="Dismiss"
+        style={{
+          border: 'none', background: 'transparent', color: 'rgba(251,245,228,0.6)',
+          cursor: 'pointer', padding: '4px 6px', fontSize: 16, lineHeight: 1,
+        }}>×</button>
     </div>
   );
 }
@@ -82,7 +146,7 @@ function NavBar({ view, onNav, pupil }) {
       background: '#9b1844', color: '#fff',
       borderBottom: '3px solid #ec6608',
     }}>
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+      <div className="rj-nav-inner" style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <img src="assets/logo-white.png" alt="Haileybury"
             style={{ height: 44, width: 'auto', display: 'block' }}/>
@@ -95,7 +159,7 @@ function NavBar({ view, onNav, pupil }) {
             </div>
           </div>
         </div>
-        <nav style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
+        <nav className="rj-nav-tabs" style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => onNav(t.id)}
               style={{
@@ -236,7 +300,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
     <div>
       {/* Odyssey hero — no frame; multiply blends the logo's white background into the parchment */}
       <div style={{ margin: '-16px 0 0', textAlign: 'center' }}>
-        <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey"
+        <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey" className="rj-hero-logo"
           style={{
             width: '100%', maxWidth: 640, height: 'auto', display: 'block', margin: '0 auto',
             mixBlendMode: 'multiply',
@@ -250,7 +314,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
         <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 10 }}>
           Chapter I · The Hero
         </div>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+        <h1 className="rj-hero-h1" style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
           {pupil.name ? <>Hello, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>{pupil.name.split(' ')[0]}.</span></> : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
         </h1>
       </div>
@@ -363,7 +427,7 @@ function SectionHeader({ eyebrow, title }) {
   return (
     <div style={{ textAlign: 'center', marginBottom: 18 }}>
       <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 8 }}>{eyebrow}</div>
-      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
+      <h2 className="rj-section-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
         {title}
       </h2>
     </div>
@@ -674,74 +738,166 @@ function ValuesChart({ counts, max, items = VALUES, history }) {
 }
 
 // Reusable filter bar: keyword search + month dropdown + value/skill chips.
-// Pass `kind="library"` to hide the value/skill chip rows.
+// Collapsed by default — clicking the header expands the full panel. Active
+// filters show a count badge next to the toggle so they're visible even when
+// collapsed.
 function FilterBar({ filter, onChange, kind = 'reflection', availableMonths = [] }) {
+  const activeCount =
+    ((filter.q || '').trim() ? 1 : 0) +
+    ((filter.month || '') ? 1 : 0) +
+    (filter.values?.length || 0) +
+    (filter.skills?.length || 0);
+  const [expanded, setExpanded] = useState(activeCount > 0);
+
   const set = (patch) => onChange({ ...filter, ...patch });
   const toggleId = (key, id) => {
     const arr = filter[key] || [];
     set({ [key]: arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id] });
   };
   const clear = () => onChange({ q: '', month: '', values: [], skills: [] });
-  const isActive = (filter.q || '') !== '' || (filter.month || '') !== ''
-    || (filter.values?.length || 0) > 0 || (filter.skills?.length || 0) > 0;
 
   return (
     <div style={{
       background: 'rgba(255,255,255,0.6)', border: '1px solid #e3dcc8',
-      borderRadius: 12, padding: 14, marginBottom: 16,
-      display: 'flex', flexDirection: 'column', gap: 10,
+      borderRadius: 12, marginBottom: 16, overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          type="search"
-          value={filter.q || ''}
-          onChange={(e) => set({ q: e.target.value })}
-          placeholder={kind === 'library' ? 'Search by title, author, or review…' : 'Search keywords…'}
-          style={{
-            flex: 1, minWidth: 180, padding: '9px 12px',
-            border: '1px solid #e3dcc8', borderRadius: 8,
-            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
-          }}/>
-        <select value={filter.month || ''} onChange={(e) => set({ month: e.target.value })}
-          style={{
-            padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
-            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
-            minWidth: 160,
-          }}>
-          <option value="">All months</option>
-          {availableMonths.map(m => (
-            <option key={m} value={m}>{formatMonth(m)}</option>
-          ))}
-        </select>
-        {isActive && (
-          <button type="button" onClick={clear}
-            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 8px' }}>
-            Clear
-          </button>
-        )}
-      </div>
-      {kind !== 'library' && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Values</span>
-            {VALUES.map(v => (
-              <ValueTag key={v.id} value={v}
-                selected={(filter.values || []).includes(v.id)}
-                onToggle={() => toggleId('values', v.id)}
-                size="sm"/>
-            ))}
+      {/* Header / toggle */}
+      <button type="button" onClick={() => setExpanded(e => !e)}
+        style={{
+          width: '100%', padding: '10px 14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', textAlign: 'left',
+        }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9b1844" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18M6 12h12M10 18h4"/>
+          </svg>
+          <span style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700 }}>
+            Search & filter
+          </span>
+          {activeCount > 0 && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+              background: '#9b1844', color: '#fff',
+              padding: '2px 8px', borderRadius: 999,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {activeCount} active
+            </span>
+          )}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {activeCount > 0 && (
+            <span onClick={(e) => { e.stopPropagation(); clear(); }}
+              style={{ color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '4px 6px' }}>
+              Clear
+            </span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#9b1844" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transition: 'transform .15s', transform: expanded ? 'rotate(180deg)' : 'none' }}>
+            <path d="M2 4l4 4 4-4"/>
+          </svg>
+        </span>
+      </button>
+
+      {/* Body */}
+      {expanded && (
+        <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #efe9d9' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+            <input
+              type="search"
+              value={filter.q || ''}
+              onChange={(e) => set({ q: e.target.value })}
+              placeholder={kind === 'library' ? 'Search by title, author, or review…' : 'Search keywords…'}
+              style={{
+                flex: 1, minWidth: 180, padding: '9px 12px',
+                border: '1px solid #e3dcc8', borderRadius: 8,
+                fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+              }}/>
+            <select value={filter.month || ''} onChange={(e) => set({ month: e.target.value })}
+              style={{
+                padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+                fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+                minWidth: 160,
+              }}>
+              <option value="">All months</option>
+              {availableMonths.map(m => (
+                <option key={m} value={m}>{formatMonth(m)}</option>
+              ))}
+            </select>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Skills</span>
-            {SKILLS.map(s => (
-              <ValueTag key={s.id} value={s}
-                selected={(filter.skills || []).includes(s.id)}
-                onToggle={() => toggleId('skills', s.id)}
-                size="sm"/>
-            ))}
-          </div>
-        </>
+          {kind !== 'library' && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Values</span>
+                {VALUES.map(v => (
+                  <ValueTag key={v.id} value={v}
+                    selected={(filter.values || []).includes(v.id)}
+                    onToggle={() => toggleId('values', v.id)}
+                    size="sm"/>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Skills</span>
+                {SKILLS.map(s => (
+                  <ValueTag key={s.id} value={s}
+                    selected={(filter.skills || []).includes(s.id)}
+                    onToggle={() => toggleId('skills', s.id)}
+                    size="sm"/>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
+    </div>
+  );
+}
+
+// Bucket an ISO date string into a human label relative to today.
+function dateBucket(iso) {
+  if (!iso) return 'Undated';
+  const d = new Date(iso + 'T00:00:00');
+  if (Number.isNaN(+d)) return 'Undated';
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const weekAgo = new Date(start); weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const yearStart = new Date(today.getFullYear(), 0, 1);
+  if (d >= weekAgo)    return 'This week';
+  if (d >= monthStart) return 'Earlier this month';
+  if (d >= yearStart)  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+// Walk a sorted entry list and emit a list of { type, ... } items so that
+// each group of consecutive same-bucket entries gets a heading row.
+function groupEntries(entries) {
+  const out = [];
+  let lastBucket = null;
+  for (const e of entries) {
+    const b = dateBucket(e.date);
+    if (b !== lastBucket) {
+      out.push({ type: 'heading', label: b, key: `h-${b}-${e.id || ''}` });
+      lastBucket = b;
+    }
+    out.push({ type: 'entry', entry: e, key: e.id });
+  }
+  return out;
+}
+
+// Heading row used inside grouped lists.
+function DateHeading({ label }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, marginBottom: -4,
+    }}>
+      <span style={{
+        fontSize: 10, letterSpacing: '0.28em', textTransform: 'uppercase',
+        color: '#8a6d2a', fontWeight: 700,
+      }}>{label}</span>
+      <span style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, #d9c78a 0%, transparent 100%)' }}/>
     </div>
   );
 }
@@ -835,11 +991,15 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
             <EmptyState label="No reflections match those filters."/>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {filtered.map(e => (
-                <WeeklyCard key={e.id} entry={e}
-                  onEdit={() => setEditingId(e.id)}
-                  onDelete={() => onDelete(e.id)}/>
-              ))}
+              {groupEntries(filtered).map(item =>
+                item.type === 'heading' ? (
+                  <DateHeading key={item.key} label={item.label}/>
+                ) : (
+                  <WeeklyCard key={item.key} entry={item.entry}
+                    onEdit={() => setEditingId(item.entry.id)}
+                    onDelete={() => onDelete(item.entry.id)}/>
+                )
+              )}
             </div>
           )}
         </>
@@ -870,7 +1030,7 @@ function WeeklyCard({ entry, onEdit, onDelete }) {
             )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="rj-card-actions" style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
@@ -1053,12 +1213,12 @@ function MoodPicker({ value, onChange }) {
 function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+      <div className="rj-form-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>{eyebrow}</div>
           <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 38, fontWeight: 700, margin: 0, lineHeight: 1.05, letterSpacing: '-0.02em' }}>{title}</h1>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="rj-form-actions" style={{ display: 'flex', gap: 10 }}>
           {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
           <Button onClick={onSave} disabled={!canSave}>Save</Button>
         </div>
@@ -1138,11 +1298,15 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
             <EmptyState label="No long tutorials match those filters."/>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {filtered.map(e => (
-                <TutorialCard key={e.id} entry={e}
-                  onEdit={() => setEditingId(e.id)}
-                  onDelete={() => onDelete(e.id)}/>
-              ))}
+              {groupEntries(filtered).map(item =>
+                item.type === 'heading' ? (
+                  <DateHeading key={item.key} label={item.label}/>
+                ) : (
+                  <TutorialCard key={item.key} entry={item.entry}
+                    onEdit={() => setEditingId(item.entry.id)}
+                    onDelete={() => onDelete(item.entry.id)}/>
+                )
+              )}
             </div>
           )}
         </>
@@ -1183,7 +1347,7 @@ function TutorialCard({ entry, onEdit, onDelete }) {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="rj-card-actions" style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
@@ -1384,11 +1548,15 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
             <EmptyState label="No books match those filters."/>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {filtered.map(e => (
-                <LibraryCard key={e.id} entry={e}
-                  onEdit={() => setEditingId(e.id)}
-                  onDelete={() => onDelete(e.id)}/>
-              ))}
+              {groupEntries(filtered).map(item =>
+                item.type === 'heading' ? (
+                  <DateHeading key={item.key} label={item.label}/>
+                ) : (
+                  <LibraryCard key={item.key} entry={item.entry}
+                    onEdit={() => setEditingId(item.entry.id)}
+                    onDelete={() => onDelete(item.entry.id)}/>
+                )
+              )}
             </div>
           )}
         </>
@@ -1419,7 +1587,7 @@ function LibraryCard({ entry, onEdit, onDelete }) {
             <StarRating value={entry.rating || 0} size={18}/>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="rj-card-actions" style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setOpen(o => !o)}
             style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
             {open ? 'Less' : 'More'}
@@ -1918,7 +2086,7 @@ function BookSpread({ entry }) {
 
   if (isBook) {
     return (
-      <div style={{
+      <div className="rj-spread" style={{
         position: 'relative',
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) 16px minmax(0, 1fr)',
@@ -1927,7 +2095,7 @@ function BookSpread({ entry }) {
         background: '#c98508',
       }}>
         {/* Left page — cover, title, author, stars, date */}
-        <div style={{
+        <div className="rj-page-left" style={{
           background: pageBg, padding: '36px 34px 36px 38px',
           minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center', gap: 18,
@@ -1948,12 +2116,12 @@ function BookSpread({ entry }) {
         </div>
 
         {/* Spine */}
-        <div style={{
+        <div className="rj-spine" style={{
           background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
         }}/>
 
         {/* Right page — review */}
-        <div style={{
+        <div className="rj-page-right" style={{
           background: pageBg, padding: '36px 38px 36px 34px',
           minHeight: 520,
         }}>
@@ -1981,7 +2149,7 @@ function BookSpread({ entry }) {
       background: '#c98508',
     }}>
       {/* Left page */}
-      <div style={{
+      <div className="rj-page-left" style={{
         background: pageBg, padding: '36px 34px 36px 38px',
         minHeight: 520,
         borderRight: '1px solid rgba(155,24,68,0.08)',
@@ -2035,12 +2203,12 @@ function BookSpread({ entry }) {
       </div>
 
       {/* Spine */}
-      <div style={{
+      <div className="rj-spine" style={{
         background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
       }}/>
 
       {/* Right page */}
-      <div style={{
+      <div className="rj-page-right" style={{
         background: pageBg, padding: '36px 38px 36px 34px',
         minHeight: 520, display: 'flex', flexDirection: 'column', gap: 18,
       }}>
