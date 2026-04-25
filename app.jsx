@@ -673,10 +673,120 @@ function ValuesChart({ counts, max, items = VALUES, history }) {
   );
 }
 
+// Reusable filter bar: keyword search + month dropdown + value/skill chips.
+// Pass `kind="library"` to hide the value/skill chip rows.
+function FilterBar({ filter, onChange, kind = 'reflection', availableMonths = [] }) {
+  const set = (patch) => onChange({ ...filter, ...patch });
+  const toggleId = (key, id) => {
+    const arr = filter[key] || [];
+    set({ [key]: arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id] });
+  };
+  const clear = () => onChange({ q: '', month: '', values: [], skills: [] });
+  const isActive = (filter.q || '') !== '' || (filter.month || '') !== ''
+    || (filter.values?.length || 0) > 0 || (filter.skills?.length || 0) > 0;
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.6)', border: '1px solid #e3dcc8',
+      borderRadius: 12, padding: 14, marginBottom: 16,
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="search"
+          value={filter.q || ''}
+          onChange={(e) => set({ q: e.target.value })}
+          placeholder={kind === 'library' ? 'Search by title, author, or review…' : 'Search keywords…'}
+          style={{
+            flex: 1, minWidth: 180, padding: '9px 12px',
+            border: '1px solid #e3dcc8', borderRadius: 8,
+            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+          }}/>
+        <select value={filter.month || ''} onChange={(e) => set({ month: e.target.value })}
+          style={{
+            padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+            minWidth: 160,
+          }}>
+          <option value="">All months</option>
+          {availableMonths.map(m => (
+            <option key={m} value={m}>{formatMonth(m)}</option>
+          ))}
+        </select>
+        {isActive && (
+          <button type="button" onClick={clear}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 8px' }}>
+            Clear
+          </button>
+        )}
+      </div>
+      {kind !== 'library' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Values</span>
+            {VALUES.map(v => (
+              <ValueTag key={v.id} value={v}
+                selected={(filter.values || []).includes(v.id)}
+                onToggle={() => toggleId('values', v.id)}
+                size="sm"/>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Skills</span>
+            {SKILLS.map(s => (
+              <ValueTag key={s.id} value={s}
+                selected={(filter.skills || []).includes(s.id)}
+                onToggle={() => toggleId('skills', s.id)}
+                size="sm"/>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Render an ISO YYYY-MM string as e.g. "October 2026"
+function formatMonth(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-').map(Number);
+  if (!y || !m) return ym;
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+// Build the sorted list of YYYY-MM strings present in a set of entries.
+function monthsFromEntries(entries) {
+  const set = new Set();
+  entries.forEach(e => {
+    if (e.date && e.date.length >= 7) set.add(e.date.slice(0, 7));
+  });
+  return Array.from(set).sort((a, b) => b.localeCompare(a)); // newest first
+}
+
+// Apply filter to a list of entries.
+function applyFilter(entries, filter, searchKeys) {
+  const q = (filter.q || '').trim().toLowerCase();
+  const valueIds = filter.values || [];
+  const skillIds = filter.skills || [];
+  const month = filter.month || '';
+  return entries.filter(e => {
+    if (q) {
+      const hay = searchKeys.map(k => (e[k] || '').toString().toLowerCase()).join(' ');
+      if (!hay.includes(q)) return false;
+    }
+    if (month && (e.date || '').slice(0, 7) !== month) return false;
+    if (valueIds.length && !valueIds.every(id => (e.values || []).includes(id))) return false;
+    if (skillIds.length && !skillIds.every(id => (e.skills || []).includes(id))) return false;
+    return true;
+  });
+}
+
 // ─── Weekly Reflections ───────────────────────────────────────
 function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
   const [editingId, setEditingId] = useState(null);
+  const [filter, setFilter] = useState({ q: '', month: '', values: [], skills: [] });
 
   if (composing) {
     return (
@@ -698,6 +808,9 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
     }
   }
 
+  const months = monthsFromEntries(entries);
+  const filtered = applyFilter(entries, filter, ['moment', 'proud', 'tricky', 'caption', 'mood']);
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
@@ -716,13 +829,20 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
       {entries.length === 0 ? (
         <EmptyState label="No reflections yet."/>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => (
-            <WeeklyCard key={e.id} entry={e}
-              onEdit={() => setEditingId(e.id)}
-              onDelete={() => onDelete(e.id)}/>
-          ))}
-        </div>
+        <>
+          <FilterBar filter={filter} onChange={setFilter} availableMonths={months}/>
+          {filtered.length === 0 ? (
+            <EmptyState label="No reflections match those filters."/>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {filtered.map(e => (
+                <WeeklyCard key={e.id} entry={e}
+                  onEdit={() => setEditingId(e.id)}
+                  onDelete={() => onDelete(e.id)}/>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -959,6 +1079,7 @@ function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
 function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
   const [editingId, setEditingId] = useState(null);
+  const [filter, setFilter] = useState({ q: '', month: '', values: [], skills: [] });
 
   if (composing) {
     return (
@@ -979,6 +1100,9 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
       );
     }
   }
+
+  const months = monthsFromEntries(entries);
+  const filtered = applyFilter(entries, filter, ['title', 'story', 'shift', 'wentWell', 'differently', 'discuss', 'caption']);
 
   const yellowTotal = entries.reduce((n, e) => n + (e.yellowTickets || 0), 0);
   const blueTotal   = entries.reduce((n, e) => n + (e.blueTickets   || 0), 0);
@@ -1008,13 +1132,20 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
       {entries.length === 0 ? (
         <EmptyState label="No long tutorials yet."/>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => (
-            <TutorialCard key={e.id} entry={e}
-              onEdit={() => setEditingId(e.id)}
-              onDelete={() => onDelete(e.id)}/>
-          ))}
-        </div>
+        <>
+          <FilterBar filter={filter} onChange={setFilter} availableMonths={months}/>
+          {filtered.length === 0 ? (
+            <EmptyState label="No long tutorials match those filters."/>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {filtered.map(e => (
+                <TutorialCard key={e.id} entry={e}
+                  onEdit={() => setEditingId(e.id)}
+                  onDelete={() => onDelete(e.id)}/>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1190,6 +1321,7 @@ function TutorialForm({ onSave, onCancel, initial }) {
 function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
   const [editingId, setEditingId] = useState(null);
+  const [filter, setFilter] = useState({ q: '', month: '', values: [], skills: [] });
 
   if (composing) {
     return (
@@ -1210,6 +1342,8 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
     }
   }
 
+  const months = monthsFromEntries(entries);
+  const filtered = applyFilter(entries, filter, ['title', 'author', 'review']);
   const avg = entries.length ? (entries.reduce((s, e) => s + (e.rating || 0), 0) / entries.length) : 0;
 
   return (
@@ -1244,13 +1378,20 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
       {entries.length === 0 ? (
         <EmptyState label="No books logged yet."/>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => (
-            <LibraryCard key={e.id} entry={e}
-              onEdit={() => setEditingId(e.id)}
-              onDelete={() => onDelete(e.id)}/>
-          ))}
-        </div>
+        <>
+          <FilterBar filter={filter} onChange={setFilter} kind="library" availableMonths={months}/>
+          {filtered.length === 0 ? (
+            <EmptyState label="No books match those filters."/>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {filtered.map(e => (
+                <LibraryCard key={e.id} entry={e}
+                  onEdit={() => setEditingId(e.id)}
+                  onDelete={() => onDelete(e.id)}/>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
