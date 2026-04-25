@@ -571,7 +571,8 @@ function WeeklyCard({ entry, onEdit, onDelete }) {
             {entry.moment || 'Untitled'}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={`v-${id}`} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.skills || []).map(id => SKILL_BY_ID[id] && <ValueTag key={`s-${id}`} value={SKILL_BY_ID[id]} selected size="sm"/>)}
             {entry.mood && (
               <span style={{ padding: '4px 10px', borderRadius: 999, border: '1.5px solid #ec6608', background: '#fde5d0', color: '#ec6608', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {entry.mood}
@@ -633,6 +634,7 @@ function WeeklyForm({ onSave, onCancel, initial }) {
   const [date, setDate]       = useState(initial?.date   ?? todayISO());
   const [moment, setMoment]   = useState(initial?.moment ?? '');
   const [values, setValues]   = useState(initial?.values ?? []);
+  const [skills, setSkills]   = useState(initial?.skills ?? []);
   const [photo, setPhoto]     = useState(initial?.photo  ?? null);
   const [caption, setCaption] = useState(initial?.caption ?? '');
   const [proud, setProud]     = useState(initial?.proud  ?? '');
@@ -644,7 +646,7 @@ function WeeklyForm({ onSave, onCancel, initial }) {
     if (!canSave) return;
     onSave({
       kind: 'weekly', date, weekCommencing: weekCommencingISO(date),
-      moment: moment.trim(), values,
+      moment: moment.trim(), values, skills,
       photo, caption: caption.trim(),
       proud: proud.trim(), tricky: tricky.trim(), mood,
     });
@@ -667,6 +669,10 @@ function WeeklyForm({ onSave, onCancel, initial }) {
 
       <Field label="Values in this story" hint="Tap any that showed up.">
         <ValuePicker selected={values} onChange={setValues}/>
+      </Field>
+
+      <Field label="Skills you used or stretched" hint="Tap any that came into play.">
+        <ValuePicker selected={skills} onChange={setSkills} items={SKILLS}/>
       </Field>
 
       <Field label="Photo or sketch (optional)">
@@ -818,7 +824,8 @@ function TutorialCard({ entry, onEdit, onDelete }) {
             {entry.title || 'Untitled'}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={`v-${id}`} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.skills || []).map(id => SKILL_BY_ID[id] && <ValueTag key={`s-${id}`} value={SKILL_BY_ID[id]} selected size="sm"/>)}
           </div>
           {(entry.yellowTickets > 0 || entry.blueTickets > 0) && (
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -871,6 +878,7 @@ function TutorialForm({ onSave, onCancel, initial }) {
   const [story, setStory]             = useState(initial?.story       ?? '');
   const [shift, setShift]             = useState(initial?.shift       ?? '');
   const [values, setValues]           = useState(initial?.values      ?? []);
+  const [skills, setSkills]           = useState(initial?.skills      ?? []);
   const [photo, setPhoto]             = useState(initial?.photo       ?? null);
   const [caption, setCaption]         = useState(initial?.caption     ?? '');
   const [wentWell, setWentWell]       = useState(initial?.wentWell    ?? '');
@@ -885,7 +893,7 @@ function TutorialForm({ onSave, onCancel, initial }) {
     onSave({
       kind: 'tutorial', date, term,
       title: title.trim(), story: story.trim(), shift: shift.trim(),
-      values,
+      values, skills,
       photo, caption: caption.trim(),
       wentWell: wentWell.trim(), differently: differently.trim(), discuss: discuss.trim(),
       yellowTickets: Number(yellowTickets) || 0, blueTickets: Number(blueTickets) || 0,
@@ -925,6 +933,10 @@ function TutorialForm({ onSave, onCancel, initial }) {
 
       <Field label="Values this touches">
         <ValuePicker selected={values} onChange={setValues}/>
+      </Field>
+
+      <Field label="Skills you used or stretched" hint="Tap any that came into play.">
+        <ValuePicker selected={skills} onChange={setSkills} items={SKILLS}/>
       </Field>
 
       <Field label="Photo or sketch (optional)">
@@ -1171,6 +1183,15 @@ function PrintEntry({ entry }) {
           ))}
         </div>
       )}
+      {entry.skills?.length > 0 && (
+        <div className="rj-print-values">
+          {entry.skills.map(id => SKILL_BY_ID[id] && (
+            <span key={id} className="rj-print-tag" style={{ borderColor: SKILL_BY_ID[id].color, color: SKILL_BY_ID[id].color }}>
+              {SKILL_BY_ID[id].label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {entry.photo && (
         <figure className="rj-print-figure">
@@ -1249,10 +1270,18 @@ function BookSpread({ entry }) {
         )}
 
         {entry.values?.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 9.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, marginBottom: 8 }}>Values</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {entry.values.map(id => VALUE_BY_ID[id] && <ValueTag key={id} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            </div>
+          </div>
+        )}
+        {entry.skills?.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 9.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, marginBottom: 8 }}>Skills</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {entry.skills.map(id => SKILL_BY_ID[id] && <ValueTag key={id} value={SKILL_BY_ID[id]} selected size="sm"/>)}
             </div>
           </div>
         )}
