@@ -151,6 +151,47 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
   const [compassMode, setCompassMode] = useState('values');
   const isSkills = compassMode === 'skills';
 
+  // Term-snapshot history for the compass. We snapshot value/skill counts
+  // at the end of each completed academic term (Michaelmas: 31 Dec, Lent:
+  // 31 Mar). Live compass shows the current cumulative.
+  const compassHistory = useMemo(() => {
+    const today = todayISO();
+    const yr = Number(today.slice(0, 4));
+    const mo = Number(today.slice(5, 7));
+    // Academic year starts in September
+    const ayStart = mo >= 9 ? yr : yr - 1;
+    const michaelmasEnd = `${ayStart}-12-31`;
+    const lentEnd       = `${ayStart + 1}-03-31`;
+    const allEntries = [...weekly, ...tutorial];
+
+    const snapshot = (key, items, until) => {
+      const seed = Object.fromEntries(items.map(i => [i.id, 0]));
+      allEntries.forEach(e => {
+        if (!e.date || e.date > until) return;
+        (e[key] || []).forEach(id => { if (seed[id] != null) seed[id]++; });
+      });
+      return seed;
+    };
+
+    const sumCounts = (c) => Object.values(c).reduce((a, b) => a + b, 0);
+
+    const valueSnapshots = [];
+    const skillSnapshots = [];
+    if (today > michaelmasEnd) {
+      const v = snapshot('values', VALUES, michaelmasEnd);
+      const s = snapshot('skills', SKILLS, michaelmasEnd);
+      if (sumCounts(v) > 0) valueSnapshots.push({ label: 'Michaelmas', counts: v });
+      if (sumCounts(s) > 0) skillSnapshots.push({ label: 'Michaelmas', counts: s });
+    }
+    if (today > lentEnd) {
+      const v = snapshot('values', VALUES, lentEnd);
+      const s = snapshot('skills', SKILLS, lentEnd);
+      if (sumCounts(v) > 0) valueSnapshots.push({ label: 'Lent', counts: v });
+      if (sumCounts(s) > 0) skillSnapshots.push({ label: 'Lent', counts: s });
+    }
+    return { valueSnapshots, skillSnapshots };
+  }, [weekly, tutorial]);
+
   // Auto-summary paragraph (first-person, rule-based — a real LLM summary is a
   // future backend job). The pupil narrates their own journal so far.
   const summary = useMemo(() => {
@@ -264,7 +305,8 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
         <ValuesChart
           items={isSkills ? SKILLS : VALUES}
           counts={isSkills ? skillCounts : valueCounts}
-          max={isSkills ? maxSkillCount : maxValueCount}/>
+          max={isSkills ? maxSkillCount : maxValueCount}
+          history={isSkills ? compassHistory.skillSnapshots : compassHistory.valueSnapshots}/>
       </FramedCard>
 
       <OrnamentDivider/>
@@ -429,7 +471,7 @@ function StatSeal({ label, value, accent }) {
 // length is proportional to how often that item has been tagged. Degree
 // ring with tick marks, central pivot with compass star. Renders any
 // ordered list of {id, label, color} via the `items` prop.
-function ValuesChart({ counts, max, items = VALUES }) {
+function ValuesChart({ counts, max, items = VALUES, history }) {
   const n = items.length;
   const size = 380;
   const cx = size / 2, cy = size / 2;
@@ -528,6 +570,24 @@ function ValuesChart({ counts, max, items = VALUES }) {
             <circle r={armMax + 4} fill="none" stroke="#c9a74a" strokeOpacity="0.28" strokeWidth="0.5" strokeDasharray="2 4"/>
           </g>
 
+          {/* Term-history ghost arms (rendered behind the live arms) */}
+          {(history || []).map((snap, snapIdx) => {
+            // Older snapshots fade more
+            const opacity = 0.16 + (snapIdx / Math.max(1, history.length)) * 0.18;
+            return arms.map(a => {
+              const ghostCount = snap.counts?.[a.v.id] || 0;
+              if (ghostCount === 0) return null;
+              const ghostRatio = max ? ghostCount / max : 0;
+              const ghostTip = armMin + (armMax - armMin) * ghostRatio;
+              const ghostPath = `M 0 ${-pivotR + 2} L ${armHalfW} 0 L 0 ${-ghostTip} L ${-armHalfW} 0 Z`;
+              return (
+                <g key={`${snapIdx}-${a.v.id}`} transform={`rotate(${a.angle})`} opacity={opacity}>
+                  <path d={ghostPath} fill="none" stroke={a.v.color} strokeWidth="1" strokeDasharray="3 3"/>
+                </g>
+              );
+            });
+          })}
+
           {/* Compass arms — spear-pointed, split into light/dark halves */}
           {arms.map((a, i) => (
             <g key={a.v.id} className={`rj-arm-${i}`}>
@@ -583,6 +643,19 @@ function ValuesChart({ counts, max, items = VALUES }) {
           <circle r="2.2" fill="#5a0d25"/>
         </g>
       </svg>
+
+      {history?.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap', fontSize: 11, color: '#7c7c7c', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-block', width: 16, height: 2, background: '#9b1844' }}/> Now
+          </span>
+          {history.map((snap, i) => (
+            <span key={snap.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: 0.7 }}>
+              <span style={{ display: 'inline-block', width: 16, height: 0, borderTop: '1.5px dashed #8a6d2a' }}/> {snap.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {topArm ? (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#5f5a52' }}>
