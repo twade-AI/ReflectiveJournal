@@ -1292,6 +1292,14 @@ function ScrapbookView({ state }) {
         title: e.title, values: e.values || [], kind: 'Tutorial',
       });
     });
+    (state.books || []).forEach(e => {
+      if (e.photo) rows.push({
+        id: e.id, photo: e.photo,
+        caption: e.author ? `by ${e.author}` : '',
+        date: e.date,
+        title: e.title, values: [], kind: 'Book',
+      });
+    });
     return rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [state]);
 
@@ -1398,6 +1406,7 @@ function BookView({ state }) {
     const all = [
       ...state.weekly.map(e => ({ ...e, _kind: 'weekly' })),
       ...state.tutorial.map(e => ({ ...e, _kind: 'tutorial' })),
+      ...(state.books || []).map(e => ({ ...e, _kind: 'book' })),
     ];
     return all.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   }, [state]);
@@ -1424,7 +1433,7 @@ function BookView({ state }) {
           Your voyage, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
         </h1>
         <p style={{ fontSize: 15, color: '#5f5a52', marginTop: 12, maxWidth: 600, lineHeight: 1.5 }}>
-          Every reflection and long tutorial in order, page by page. Use the arrow keys or the buttons to turn the page.
+          Every reflection, long tutorial, and book in order, page by page. Use the arrow keys or the buttons to turn the page.
         </p>
       </div>
 
@@ -1473,6 +1482,32 @@ function BookPrintable({ entries }) {
 
 function PrintEntry({ entry }) {
   const isTutorial = entry._kind === 'tutorial';
+  const isBook     = entry._kind === 'book';
+
+  if (isBook) {
+    return (
+      <div className="rj-print-entry">
+        <div className="rj-print-meta" style={{ color: '#558b3f' }}>
+          Book · {formatDate(entry.date)}
+        </div>
+        <h2 className="rj-print-h" style={{ fontStyle: 'italic' }}>{entry.title || 'Untitled'}</h2>
+        {entry.author && <div style={{ fontStyle: 'italic', fontSize: '12pt', color: '#5f5a52', marginBottom: '4mm' }}>by {entry.author}</div>}
+        {entry.rating > 0 && (
+          <div style={{ fontSize: '11pt', color: '#c98508', marginBottom: '5mm', letterSpacing: '0.06em' }}>
+            {'★'.repeat(entry.rating)}{'☆'.repeat(5 - entry.rating)}{'  '}
+            <span style={{ color: '#7c7c7c' }}>{entry.rating} / 5</span>
+          </div>
+        )}
+        {entry.photo && (
+          <figure className="rj-print-figure" style={{ textAlign: 'center' }}>
+            <img src={entry.photo} alt="" style={{ maxHeight: '90mm', width: 'auto', margin: '0 auto' }}/>
+          </figure>
+        )}
+        {entry.review && <PrintSection label="Review" body={entry.review}/>}
+      </div>
+    );
+  }
+
   return (
     <div className="rj-print-entry">
       <div className="rj-print-meta">
@@ -1544,7 +1579,64 @@ function PrintSection({ label, body }) {
 
 function BookSpread({ entry }) {
   const isTutorial = entry._kind === 'tutorial';
+  const isBook     = entry._kind === 'book';
   const pageBg = 'linear-gradient(180deg, #fdf6e3 0%, #f7f0d8 100%)';
+
+  if (isBook) {
+    return (
+      <div style={{
+        position: 'relative',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) 16px minmax(0, 1fr)',
+        borderRadius: 14, overflow: 'hidden',
+        boxShadow: '0 10px 30px rgba(31,29,26,0.12), 0 2px 4px rgba(31,29,26,0.05)',
+        background: '#c98508',
+      }}>
+        {/* Left page — cover, title, author, stars, date */}
+        <div style={{
+          background: pageBg, padding: '36px 34px 36px 38px',
+          minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center', gap: 18,
+        }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#558b3f', fontWeight: 700 }}>
+            Book · {formatDate(entry.date)}
+          </div>
+          <BookCover photo={entry.photo} title={entry.title}/>
+          <div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: '#1f1d1a', lineHeight: 1.15, fontStyle: 'italic' }}>
+              {entry.title || 'Untitled'}
+            </div>
+            {entry.author && (
+              <div style={{ fontSize: 13.5, color: '#5f5a52', fontStyle: 'italic', marginTop: 4 }}>by {entry.author}</div>
+            )}
+          </div>
+          {entry.rating > 0 && <StarRating value={entry.rating} size={22}/>}
+        </div>
+
+        {/* Spine */}
+        <div style={{
+          background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
+        }}/>
+
+        {/* Right page — review */}
+        <div style={{
+          background: pageBg, padding: '36px 38px 36px 34px',
+          minHeight: 520,
+        }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#558b3f', fontWeight: 700, marginBottom: 8 }}>
+            Review
+          </div>
+          {entry.review ? (
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, color: '#1f1d1a', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+              {entry.review}
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>(No review written.)</div>
+          )}
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{
       position: 'relative',
