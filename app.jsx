@@ -24,6 +24,14 @@ function useJournal() {
 
 const newId = () => (crypto?.randomUUID?.() ?? String(Date.now() + Math.random()));
 
+// Join an array as English prose: ['a','b','c'] => 'a, b, and c'
+function joinList(parts) {
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
 // ─── App shell ────────────────────────────────────────────────
 function App() {
   const [state, setState] = useJournal();
@@ -143,25 +151,42 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
   const [compassMode, setCompassMode] = useState('values');
   const isSkills = compassMode === 'skills';
 
-  // Auto-summary paragraph (rule-based — real LLM summary is a future backend job)
+  // Auto-summary paragraph (first-person, rule-based — a real LLM summary is a
+  // future backend job). The pupil narrates their own journal so far.
   const summary = useMemo(() => {
-    const name = pupil.name ? pupil.name.split(' ')[0] : 'You';
-    if (totalWeekly + totalTutorial + totalBooks === 0) return `${name} hasn't set off on the journey yet. Write your first reflection or log a book to begin.`;
+    if (totalWeekly + totalTutorial + totalBooks === 0) {
+      return `I haven't set off on the journey yet — my first reflection or book is just a tap away.`;
+    }
     const bits = [];
-    bits.push(`${name} has logged ${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'}, ${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'}, and read ${totalBooks} book${totalBooks === 1 ? '' : 's'} so far.`);
+    const counts = [
+      totalWeekly   ? `${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'}`        : null,
+      totalTutorial ? `${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'}` : null,
+      totalBooks    ? `${totalBooks} book${totalBooks === 1 ? '' : 's'}`                : null,
+    ].filter(Boolean);
+    bits.push(`So far I've logged ${joinList(counts)}.`);
+
     if (topValue && valueCounts[topValueId] >= 2) {
-      bits.push(`The compass points strongest to ${topValue.label.toLowerCase()} — in ${valueCounts[topValueId]} entries.`);
+      bits.push(`My compass points strongest to ${topValue.label.toLowerCase()} — it's shown up in ${valueCounts[topValueId]} entries.`);
     }
     if (yellowTotal + blueTotal > 0) {
-      bits.push(`Tickets logged this year: ${yellowTotal} yellow, ${blueTotal} blue.`);
+      const ticketBits = [];
+      if (yellowTotal > 0) ticketBits.push(`${yellowTotal} yellow`);
+      if (blueTotal > 0)   ticketBits.push(`${blueTotal} blue`);
+      bits.push(`I've picked up ${joinList(ticketBits)} ticket${(yellowTotal + blueTotal) === 1 ? '' : 's'} this year.`);
     }
-    const mostRecent = [...weekly, ...tutorial].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+    if (totalBooks > 0) {
+      const topRated = [...books].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+      if (topRated && (topRated.rating || 0) >= 4 && topRated.title) {
+        bits.push(`My favourite read so far is "${topRated.title}"${topRated.author ? ` by ${topRated.author}` : ''}.`);
+      }
+    }
+    const mostRecent = [...weekly, ...tutorial, ...books].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
     if (mostRecent) {
       const title = mostRecent.title || mostRecent.moment || mostRecent.story || '';
-      if (title) bits.push(`Most recent chapter: "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}"`);
+      if (title) bits.push(`Most recently I wrote about "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}".`);
     }
     return bits.join(' ');
-  }, [pupil, weekly, tutorial, books, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial, totalBooks]);
+  }, [weekly, tutorial, books, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial, totalBooks]);
 
   const firstLetter = summary.charAt(0);
   const restSummary = summary.slice(1);
@@ -760,25 +785,73 @@ function WeeklyForm({ onSave, onCancel, initial }) {
       </div>
 
       <Field label="My week in one word">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {MOODS.map(w => {
-            const selected = mood === w;
-            return (
-              <button key={w} type="button" onClick={() => setMood(selected ? '' : w)}
-                style={{
-                  padding: '10px 16px', borderRadius: 8,
-                  border: `1.5px solid ${selected ? '#9b1844' : '#e3dcc8'}`,
-                  background: selected ? '#9b1844' : '#fff',
-                  color: selected ? '#fff' : '#1f1d1a',
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}>
-                {w}
-              </button>
-            );
-          })}
-        </div>
+        <MoodPicker value={mood} onChange={setMood}/>
       </Field>
     </FormShell>
+  );
+}
+
+// Mood chips with an "Other" chip that reveals a free-text input. The mood
+// is stored as the actual word (preset or custom), not the literal "Other".
+function MoodPicker({ value, onChange }) {
+  const presets = MOODS.filter(m => m !== 'Other');
+  const isCustom = !!value && !presets.includes(value);
+  const [otherOpen, setOtherOpen] = useState(isCustom);
+
+  const pickPreset = (w) => {
+    onChange(value === w ? '' : w);
+    setOtherOpen(false);
+  };
+  const toggleOther = () => {
+    setOtherOpen(prev => {
+      const next = !prev;
+      if (next) {
+        // Opening: clear any preset selection so the input becomes the source
+        if (presets.includes(value)) onChange('');
+      } else {
+        // Closing: clear any custom mood
+        if (isCustom) onChange('');
+      }
+      return next;
+    });
+  };
+
+  const otherSelected = otherOpen || isCustom;
+
+  const chip = (label, selected, onClick) => (
+    <button type="button" onClick={onClick}
+      style={{
+        padding: '10px 16px', borderRadius: 8,
+        border: `1.5px solid ${selected ? '#9b1844' : '#e3dcc8'}`,
+        background: selected ? '#9b1844' : '#fff',
+        color: selected ? '#fff' : '#1f1d1a',
+        fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+      }}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {presets.map(w => chip(w, value === w, () => pickPreset(w)))}
+        {chip('Other', otherSelected, toggleOther)}
+      </div>
+      {otherSelected && (
+        <input
+          type="text"
+          autoFocus={otherOpen && !isCustom}
+          value={isCustom ? value : ''}
+          maxLength={30}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Type your own word…"
+          style={{
+            marginTop: 12, width: '100%', maxWidth: 320,
+            padding: '10px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+          }}/>
+      )}
+    </div>
   );
 }
 
