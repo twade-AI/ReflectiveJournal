@@ -10,6 +10,30 @@ const VALUES = [
 ];
 const VALUE_BY_ID = Object.fromEntries(VALUES.map(v => [v.id, v]));
 
+// Skills palette — separate from the brand values, with a cooler/cleaner
+// tone. Used alongside values on every reflection.
+const SKILLS = [
+  { id: 'organisation',  label: 'Organisation',            color: '#3a5a8c', tint: '#dde4ee' },
+  { id: 'reflection',    label: 'Reflection',              color: '#7e57c2', tint: '#e7defa' },
+  { id: 'leadership',    label: 'Leadership and Teamwork', color: '#00897b', tint: '#cfe9e6' },
+  { id: 'time',          label: 'Time Management',         color: '#c98508', tint: '#fbeed3' },
+  { id: 'problem',       label: 'Problem Solving',         color: '#558b3f', tint: '#dfe9d2' },
+  { id: 'critical',      label: 'Critical Thinking',       color: '#8b3a62', tint: '#ead2da' },
+  { id: 'communication', label: 'Communication',           color: '#0288d1', tint: '#cee5f1' },
+];
+const SKILL_BY_ID = Object.fromEntries(SKILLS.map(s => [s.id, s]));
+
+// Compass-friendly multi-line labels for long names.
+function compassLabel(label) {
+  const map = {
+    'leadership and teamwork': ['LEADERSHIP &', 'TEAMWORK'],
+    'time management':         ['TIME',         'MANAGEMENT'],
+    'problem solving':         ['PROBLEM',      'SOLVING'],
+    'critical thinking':       ['CRITICAL',     'THINKING'],
+  };
+  return map[(label || '').toLowerCase()] ?? [(label || '').toUpperCase()];
+}
+
 const MOODS = ['Energised', 'Curious', 'Steady', 'Wobbly', 'Tired', 'Other'];
 
 // ── Date helpers ───────────────────────────────────────────────
@@ -72,14 +96,16 @@ function ValueTag({ value, selected = false, onToggle, size = 'md' }) {
   );
 }
 
-// ── Value pickers (multi-select bar) ───────────────────────────
-function ValuePicker({ selected = [], onChange, size = 'md' }) {
+// ── Tag picker (multi-select bar) ──────────────────────────────
+// Works with any list of {id, label, color}. Defaults to VALUES so existing
+// callers keep working; pass items={SKILLS} to render the skills set.
+function ValuePicker({ selected = [], onChange, size = 'md', items = VALUES }) {
   const toggle = (id) => {
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
   };
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {VALUES.map(v => (
+      {items.map(v => (
         <ValueTag key={v.id} value={v}
           selected={selected.includes(v.id)}
           onToggle={toggle}
@@ -305,7 +331,7 @@ const Icons = {
 };
 
 Object.assign(window, {
-  VALUES, VALUE_BY_ID, MOODS,
+  VALUES, VALUE_BY_ID, SKILLS, SKILL_BY_ID, compassLabel, MOODS,
   todayISO, formatDate, weekCommencingISO,
   ValueTag, ValuePicker, PhotoUpload,
   Field, TextInput, TextArea, NumberStepper, Button, Card,
