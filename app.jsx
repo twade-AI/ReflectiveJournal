@@ -122,9 +122,20 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
     [...weekly, ...tutorial].forEach(e => (e.values || []).forEach(id => { if (counts[id] != null) counts[id] += 1; }));
     return counts;
   }, [weekly, tutorial]);
-  const maxCount = Math.max(1, ...Object.values(valueCounts));
+  const maxValueCount = Math.max(1, ...Object.values(valueCounts));
   const topValueId = Object.entries(valueCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
   const topValue = topValueId && valueCounts[topValueId] > 0 ? VALUE_BY_ID[topValueId] : null;
+
+  // Skill counts in parallel
+  const skillCounts = useMemo(() => {
+    const counts = Object.fromEntries(SKILLS.map(s => [s.id, 0]));
+    [...weekly, ...tutorial].forEach(e => (e.skills || []).forEach(id => { if (counts[id] != null) counts[id] += 1; }));
+    return counts;
+  }, [weekly, tutorial]);
+  const maxSkillCount = Math.max(1, ...Object.values(skillCounts));
+
+  const [compassMode, setCompassMode] = useState('values');
+  const isSkills = compassMode === 'skills';
 
   // Auto-summary paragraph (rule-based — real LLM summary is a future backend job)
   const summary = useMemo(() => {
@@ -205,15 +216,23 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
       <OrnamentDivider/>
 
-      {/* The Compass — framed card */}
+      {/* The Compass — framed card with Values/Skills toggle */}
       <div style={{ marginBottom: 10 }}>
         <SectionHeader eyebrow="Chapter II · The Compass" title="Which way are you growing?"/>
       </div>
       <FramedCard style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', textAlign: 'center', marginBottom: 14 }}>
-          Tag a value on a reflection or long tutorial and the needle turns toward it.
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+          <CompassToggle mode={compassMode} onChange={setCompassMode}/>
         </div>
-        <ValuesChart counts={valueCounts} max={maxCount}/>
+        <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic', textAlign: 'center', marginBottom: 14 }}>
+          {isSkills
+            ? 'Tag a skill on a reflection or long tutorial and the needle turns toward it.'
+            : 'Tag a value on a reflection or long tutorial and the needle turns toward it.'}
+        </div>
+        <ValuesChart
+          items={isSkills ? SKILLS : VALUES}
+          counts={isSkills ? skillCounts : valueCounts}
+          max={isSkills ? maxSkillCount : maxValueCount}/>
       </FramedCard>
 
       <OrnamentDivider/>
@@ -272,6 +291,35 @@ function SectionHeader({ eyebrow, title }) {
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#1f1d1a', margin: 0, letterSpacing: '-0.015em' }}>
         {title}
       </h2>
+    </div>
+  );
+}
+
+// Pill-shaped Values/Skills toggle.
+function CompassToggle({ mode, onChange }) {
+  const opts = [{ id: 'values', label: 'Values' }, { id: 'skills', label: 'Skills' }];
+  return (
+    <div style={{
+      display: 'inline-flex', padding: 3, gap: 0,
+      background: '#f6ead0', border: '1px solid #d9c78a',
+      borderRadius: 999, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+    }}>
+      {opts.map(o => {
+        const active = mode === o.id;
+        return (
+          <button key={o.id} type="button" onClick={() => onChange(o.id)}
+            style={{
+              padding: '7px 18px', borderRadius: 999, border: 'none',
+              fontFamily: 'inherit', fontWeight: 700, fontSize: 11,
+              letterSpacing: '0.18em', textTransform: 'uppercase',
+              background: active ? '#9b1844' : 'transparent',
+              color: active ? '#fff' : '#8a6d2a',
+              cursor: 'pointer', transition: 'background .15s, color .15s',
+            }}>
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -345,26 +393,29 @@ function StatSeal({ label, value, accent }) {
 
 // A petal-bloom chart. Five teardrop petals radiate from the centre, each
 // value's petal length proportional to how often it has been tagged.
-// A compass rose. Five spear-point arms radiate from the centre pivot; arm
-// length is proportional to how often that value has been tagged. Degree
-// ring with tick marks, central pivot with compass star.
-function ValuesChart({ counts, max }) {
+// A compass rose. Spear-point arms radiate from the centre pivot; arm
+// length is proportional to how often that item has been tagged. Degree
+// ring with tick marks, central pivot with compass star. Renders any
+// ordered list of {id, label, color} via the `items` prop.
+function ValuesChart({ counts, max, items = VALUES }) {
+  const n = items.length;
   const size = 380;
   const cx = size / 2, cy = size / 2;
-  const pivotR   = 22;   // central gold pivot
-  const ringIn   = 138;  // inner edge of degree ring
-  const ringOut  = 148;  // outer edge of degree ring
-  const armMax   = 128;  // arm tip at count=max
-  const armMin   = 54;   // arm tip at count=0 (keep visible)
-  const armHalfW = 14;   // arm half-width at the base
-  const labelR   = 170;  // label ring (outside the degree ring)
+  const pivotR   = 22;
+  const ringIn   = 138;
+  const ringOut  = 148;
+  const armMax   = 128;
+  const armMin   = 54;
+  const armHalfW = n > 5 ? 11 : 14;     // narrower arms when there are more
+  const labelR   = 170;
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const stepDeg = 360 / n;
 
-  const arms = VALUES.map((v, i) => {
+  const arms = items.map((v, i) => {
     const count = counts[v.id] || 0;
     const ratio = max ? count / max : 0;
     const tip = armMin + (armMax - armMin) * ratio;
-    const angle = i * 72;                          // 0°, 72°, 144°, 216°, 288°
+    const angle = i * stepDeg;
     const rad = angle * Math.PI / 180;
     const labelX = Math.sin(rad) * labelR;
     const labelY = -Math.cos(rad) * labelR;
@@ -378,13 +429,16 @@ function ValuesChart({ counts, max }) {
   const armRight = (len) => `M 0 ${-pivotR + 2} L ${armHalfW} 0 L 0 ${-len} Z`;
   const armLeft  = (len) => `M 0 ${-pivotR + 2} L ${-armHalfW} 0 L 0 ${-len} Z`;
 
-  // Degree ring ticks: 40 total (every 9°), major at every value angle
-  const tickCount = 40;
+  // Degree ring ticks. We always draw 60 ticks (one every 6°). A tick is
+  // "major" if it falls on (or close to) one of our value bearings, "mid"
+  // every 30°, otherwise a fine tick.
+  const tickCount = 60;
+  const majorBearings = arms.map(a => a.angle);
   const ticks = Array.from({ length: tickCount }, (_, i) => {
     const a = i * (360 / tickCount);
     const rad = a * Math.PI / 180;
-    const isMajor = [0, 72, 144, 216, 288].includes(a);
-    const isMid   = !isMajor && a % 18 === 0;
+    const isMajor = majorBearings.some(b => Math.abs(((a - b + 540) % 360) - 180) > 179);
+    const isMid   = !isMajor && a % 30 === 0;
     const tickLen = isMajor ? 12 : isMid ? 7 : 4;
     const mid = (ringIn + ringOut) / 2;
     const r1 = mid - tickLen / 2;
@@ -455,14 +509,24 @@ function ValuesChart({ counts, max }) {
                   <circle cx="0" cy={-a.tip} r="2.2" fill={a.v.color} stroke="#fff" strokeWidth="0.75"/>
                 </g>
               </g>
-              {/* Label */}
+              {/* Label — supports 1- or 2-line names */}
               <g transform={`translate(${a.labelX} ${a.labelY})`}>
-                <text textAnchor="middle" dominantBaseline="middle" y={-8}
-                  fill={a.v.color} fontSize="10.5" fontWeight="700" letterSpacing="0.18em">
-                  {a.v.label.toUpperCase()}
-                </text>
-                <text textAnchor="middle" dominantBaseline="middle" y={10}
-                  fill={a.faded ? '#bab4a1' : '#1f1d1a'} fontSize="15" fontWeight="700"
+                {(() => {
+                  const lines = compassLabel(a.v.label);
+                  const fontSize = n > 5 ? 9 : 10.5;
+                  const lineH = fontSize + 1.5;
+                  const blockH = lines.length * lineH;
+                  const labelTop = -8 - (blockH - lineH);
+                  return lines.map((w, j) => (
+                    <text key={j} textAnchor="middle" dominantBaseline="middle"
+                      y={labelTop + j * lineH}
+                      fill={a.v.color} fontSize={fontSize} fontWeight="700" letterSpacing="0.16em">
+                      {w}
+                    </text>
+                  ));
+                })()}
+                <text textAnchor="middle" dominantBaseline="middle" y={n > 5 ? 9 : 10}
+                  fill={a.faded ? '#bab4a1' : '#1f1d1a'} fontSize={n > 5 ? 13 : 15} fontWeight="700"
                   style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {a.count}
                 </text>
