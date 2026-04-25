@@ -24,6 +24,14 @@ function useJournal() {
 
 const newId = () => (crypto?.randomUUID?.() ?? String(Date.now() + Math.random()));
 
+// Join an array as English prose: ['a','b','c'] => 'a, b, and c'
+function joinList(parts) {
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
 // ─── App shell ────────────────────────────────────────────────
 function App() {
   const [state, setState] = useJournal();
@@ -143,25 +151,83 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
   const [compassMode, setCompassMode] = useState('values');
   const isSkills = compassMode === 'skills';
 
-  // Auto-summary paragraph (rule-based — real LLM summary is a future backend job)
+  // Term-snapshot history for the compass. We snapshot value/skill counts
+  // at the end of each completed academic term (Michaelmas: 31 Dec, Lent:
+  // 31 Mar). Live compass shows the current cumulative.
+  const compassHistory = useMemo(() => {
+    const today = todayISO();
+    const yr = Number(today.slice(0, 4));
+    const mo = Number(today.slice(5, 7));
+    // Academic year starts in September
+    const ayStart = mo >= 9 ? yr : yr - 1;
+    const michaelmasEnd = `${ayStart}-12-31`;
+    const lentEnd       = `${ayStart + 1}-03-31`;
+    const allEntries = [...weekly, ...tutorial];
+
+    const snapshot = (key, items, until) => {
+      const seed = Object.fromEntries(items.map(i => [i.id, 0]));
+      allEntries.forEach(e => {
+        if (!e.date || e.date > until) return;
+        (e[key] || []).forEach(id => { if (seed[id] != null) seed[id]++; });
+      });
+      return seed;
+    };
+
+    const sumCounts = (c) => Object.values(c).reduce((a, b) => a + b, 0);
+
+    const valueSnapshots = [];
+    const skillSnapshots = [];
+    if (today > michaelmasEnd) {
+      const v = snapshot('values', VALUES, michaelmasEnd);
+      const s = snapshot('skills', SKILLS, michaelmasEnd);
+      if (sumCounts(v) > 0) valueSnapshots.push({ label: 'Michaelmas', counts: v });
+      if (sumCounts(s) > 0) skillSnapshots.push({ label: 'Michaelmas', counts: s });
+    }
+    if (today > lentEnd) {
+      const v = snapshot('values', VALUES, lentEnd);
+      const s = snapshot('skills', SKILLS, lentEnd);
+      if (sumCounts(v) > 0) valueSnapshots.push({ label: 'Lent', counts: v });
+      if (sumCounts(s) > 0) skillSnapshots.push({ label: 'Lent', counts: s });
+    }
+    return { valueSnapshots, skillSnapshots };
+  }, [weekly, tutorial]);
+
+  // Auto-summary paragraph (first-person, rule-based — a real LLM summary is a
+  // future backend job). The pupil narrates their own journal so far.
   const summary = useMemo(() => {
-    const name = pupil.name ? pupil.name.split(' ')[0] : 'You';
-    if (totalWeekly + totalTutorial + totalBooks === 0) return `${name} hasn't set off on the journey yet. Write your first reflection or log a book to begin.`;
+    if (totalWeekly + totalTutorial + totalBooks === 0) {
+      return `I haven't set off on the journey yet — my first reflection or book is just a tap away.`;
+    }
     const bits = [];
-    bits.push(`${name} has logged ${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'}, ${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'}, and read ${totalBooks} book${totalBooks === 1 ? '' : 's'} so far.`);
+    const counts = [
+      totalWeekly   ? `${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'}`        : null,
+      totalTutorial ? `${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'}` : null,
+      totalBooks    ? `${totalBooks} book${totalBooks === 1 ? '' : 's'}`                : null,
+    ].filter(Boolean);
+    bits.push(`So far I've logged ${joinList(counts)}.`);
+
     if (topValue && valueCounts[topValueId] >= 2) {
-      bits.push(`The compass points strongest to ${topValue.label.toLowerCase()} — in ${valueCounts[topValueId]} entries.`);
+      bits.push(`My compass points strongest to ${topValue.label.toLowerCase()} — it's shown up in ${valueCounts[topValueId]} entries.`);
     }
     if (yellowTotal + blueTotal > 0) {
-      bits.push(`Tickets logged this year: ${yellowTotal} yellow, ${blueTotal} blue.`);
+      const ticketBits = [];
+      if (yellowTotal > 0) ticketBits.push(`${yellowTotal} yellow`);
+      if (blueTotal > 0)   ticketBits.push(`${blueTotal} blue`);
+      bits.push(`I've picked up ${joinList(ticketBits)} ticket${(yellowTotal + blueTotal) === 1 ? '' : 's'} this year.`);
     }
-    const mostRecent = [...weekly, ...tutorial].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+    if (totalBooks > 0) {
+      const topRated = [...books].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+      if (topRated && (topRated.rating || 0) >= 4 && topRated.title) {
+        bits.push(`My favourite read so far is "${topRated.title}"${topRated.author ? ` by ${topRated.author}` : ''}.`);
+      }
+    }
+    const mostRecent = [...weekly, ...tutorial, ...books].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
     if (mostRecent) {
       const title = mostRecent.title || mostRecent.moment || mostRecent.story || '';
-      if (title) bits.push(`Most recent chapter: "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}"`);
+      if (title) bits.push(`Most recently I wrote about "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}".`);
     }
     return bits.join(' ');
-  }, [pupil, weekly, tutorial, books, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial, totalBooks]);
+  }, [weekly, tutorial, books, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial, totalBooks]);
 
   const firstLetter = summary.charAt(0);
   const restSummary = summary.slice(1);
@@ -205,6 +271,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8, justifyContent: 'center' }}>
         <Button onClick={() => onNav('weekly')}>+ New reflection</Button>
         <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for long tutorial</Button>
+        <Button variant="outline" onClick={() => onNav('library')}>+ Log a book</Button>
       </div>
 
       <OrnamentDivider/>
@@ -239,7 +306,8 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
         <ValuesChart
           items={isSkills ? SKILLS : VALUES}
           counts={isSkills ? skillCounts : valueCounts}
-          max={isSkills ? maxSkillCount : maxValueCount}/>
+          max={isSkills ? maxSkillCount : maxValueCount}
+          history={isSkills ? compassHistory.skillSnapshots : compassHistory.valueSnapshots}/>
       </FramedCard>
 
       <OrnamentDivider/>
@@ -404,7 +472,7 @@ function StatSeal({ label, value, accent }) {
 // length is proportional to how often that item has been tagged. Degree
 // ring with tick marks, central pivot with compass star. Renders any
 // ordered list of {id, label, color} via the `items` prop.
-function ValuesChart({ counts, max, items = VALUES }) {
+function ValuesChart({ counts, max, items = VALUES, history }) {
   const n = items.length;
   const size = 380;
   const cx = size / 2, cy = size / 2;
@@ -503,6 +571,24 @@ function ValuesChart({ counts, max, items = VALUES }) {
             <circle r={armMax + 4} fill="none" stroke="#c9a74a" strokeOpacity="0.28" strokeWidth="0.5" strokeDasharray="2 4"/>
           </g>
 
+          {/* Term-history ghost arms (rendered behind the live arms) */}
+          {(history || []).map((snap, snapIdx) => {
+            // Older snapshots fade more
+            const opacity = 0.16 + (snapIdx / Math.max(1, history.length)) * 0.18;
+            return arms.map(a => {
+              const ghostCount = snap.counts?.[a.v.id] || 0;
+              if (ghostCount === 0) return null;
+              const ghostRatio = max ? ghostCount / max : 0;
+              const ghostTip = armMin + (armMax - armMin) * ghostRatio;
+              const ghostPath = `M 0 ${-pivotR + 2} L ${armHalfW} 0 L 0 ${-ghostTip} L ${-armHalfW} 0 Z`;
+              return (
+                <g key={`${snapIdx}-${a.v.id}`} transform={`rotate(${a.angle})`} opacity={opacity}>
+                  <path d={ghostPath} fill="none" stroke={a.v.color} strokeWidth="1" strokeDasharray="3 3"/>
+                </g>
+              );
+            });
+          })}
+
           {/* Compass arms — spear-pointed, split into light/dark halves */}
           {arms.map((a, i) => (
             <g key={a.v.id} className={`rj-arm-${i}`}>
@@ -559,6 +645,19 @@ function ValuesChart({ counts, max, items = VALUES }) {
         </g>
       </svg>
 
+      {history?.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap', fontSize: 11, color: '#7c7c7c', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-block', width: 16, height: 2, background: '#9b1844' }}/> Now
+          </span>
+          {history.map((snap, i) => (
+            <span key={snap.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: 0.7 }}>
+              <span style={{ display: 'inline-block', width: 16, height: 0, borderTop: '1.5px dashed #8a6d2a' }}/> {snap.label}
+            </span>
+          ))}
+        </div>
+      )}
+
       {topArm ? (
         <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, color: '#5f5a52' }}>
           The needle points strongest to{' '}
@@ -574,10 +673,120 @@ function ValuesChart({ counts, max, items = VALUES }) {
   );
 }
 
+// Reusable filter bar: keyword search + month dropdown + value/skill chips.
+// Pass `kind="library"` to hide the value/skill chip rows.
+function FilterBar({ filter, onChange, kind = 'reflection', availableMonths = [] }) {
+  const set = (patch) => onChange({ ...filter, ...patch });
+  const toggleId = (key, id) => {
+    const arr = filter[key] || [];
+    set({ [key]: arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id] });
+  };
+  const clear = () => onChange({ q: '', month: '', values: [], skills: [] });
+  const isActive = (filter.q || '') !== '' || (filter.month || '') !== ''
+    || (filter.values?.length || 0) > 0 || (filter.skills?.length || 0) > 0;
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.6)', border: '1px solid #e3dcc8',
+      borderRadius: 12, padding: 14, marginBottom: 16,
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="search"
+          value={filter.q || ''}
+          onChange={(e) => set({ q: e.target.value })}
+          placeholder={kind === 'library' ? 'Search by title, author, or review…' : 'Search keywords…'}
+          style={{
+            flex: 1, minWidth: 180, padding: '9px 12px',
+            border: '1px solid #e3dcc8', borderRadius: 8,
+            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+          }}/>
+        <select value={filter.month || ''} onChange={(e) => set({ month: e.target.value })}
+          style={{
+            padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+            minWidth: 160,
+          }}>
+          <option value="">All months</option>
+          {availableMonths.map(m => (
+            <option key={m} value={m}>{formatMonth(m)}</option>
+          ))}
+        </select>
+        {isActive && (
+          <button type="button" onClick={clear}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 8px' }}>
+            Clear
+          </button>
+        )}
+      </div>
+      {kind !== 'library' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Values</span>
+            {VALUES.map(v => (
+              <ValueTag key={v.id} value={v}
+                selected={(filter.values || []).includes(v.id)}
+                onToggle={() => toggleId('values', v.id)}
+                size="sm"/>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, minWidth: 50 }}>Skills</span>
+            {SKILLS.map(s => (
+              <ValueTag key={s.id} value={s}
+                selected={(filter.skills || []).includes(s.id)}
+                onToggle={() => toggleId('skills', s.id)}
+                size="sm"/>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Render an ISO YYYY-MM string as e.g. "October 2026"
+function formatMonth(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-').map(Number);
+  if (!y || !m) return ym;
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+// Build the sorted list of YYYY-MM strings present in a set of entries.
+function monthsFromEntries(entries) {
+  const set = new Set();
+  entries.forEach(e => {
+    if (e.date && e.date.length >= 7) set.add(e.date.slice(0, 7));
+  });
+  return Array.from(set).sort((a, b) => b.localeCompare(a)); // newest first
+}
+
+// Apply filter to a list of entries.
+function applyFilter(entries, filter, searchKeys) {
+  const q = (filter.q || '').trim().toLowerCase();
+  const valueIds = filter.values || [];
+  const skillIds = filter.skills || [];
+  const month = filter.month || '';
+  return entries.filter(e => {
+    if (q) {
+      const hay = searchKeys.map(k => (e[k] || '').toString().toLowerCase()).join(' ');
+      if (!hay.includes(q)) return false;
+    }
+    if (month && (e.date || '').slice(0, 7) !== month) return false;
+    if (valueIds.length && !valueIds.every(id => (e.values || []).includes(id))) return false;
+    if (skillIds.length && !skillIds.every(id => (e.skills || []).includes(id))) return false;
+    return true;
+  });
+}
+
 // ─── Weekly Reflections ───────────────────────────────────────
 function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
   const [editingId, setEditingId] = useState(null);
+  const [filter, setFilter] = useState({ q: '', month: '', values: [], skills: [] });
 
   if (composing) {
     return (
@@ -599,6 +808,9 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
     }
   }
 
+  const months = monthsFromEntries(entries);
+  const filtered = applyFilter(entries, filter, ['moment', 'proud', 'tricky', 'caption', 'mood']);
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
@@ -617,13 +829,20 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
       {entries.length === 0 ? (
         <EmptyState label="No reflections yet."/>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => (
-            <WeeklyCard key={e.id} entry={e}
-              onEdit={() => setEditingId(e.id)}
-              onDelete={() => onDelete(e.id)}/>
-          ))}
-        </div>
+        <>
+          <FilterBar filter={filter} onChange={setFilter} availableMonths={months}/>
+          {filtered.length === 0 ? (
+            <EmptyState label="No reflections match those filters."/>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {filtered.map(e => (
+                <WeeklyCard key={e.id} entry={e}
+                  onEdit={() => setEditingId(e.id)}
+                  onDelete={() => onDelete(e.id)}/>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -760,25 +979,73 @@ function WeeklyForm({ onSave, onCancel, initial }) {
       </div>
 
       <Field label="My week in one word">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {MOODS.map(w => {
-            const selected = mood === w;
-            return (
-              <button key={w} type="button" onClick={() => setMood(selected ? '' : w)}
-                style={{
-                  padding: '10px 16px', borderRadius: 8,
-                  border: `1.5px solid ${selected ? '#9b1844' : '#e3dcc8'}`,
-                  background: selected ? '#9b1844' : '#fff',
-                  color: selected ? '#fff' : '#1f1d1a',
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}>
-                {w}
-              </button>
-            );
-          })}
-        </div>
+        <MoodPicker value={mood} onChange={setMood}/>
       </Field>
     </FormShell>
+  );
+}
+
+// Mood chips with an "Other" chip that reveals a free-text input. The mood
+// is stored as the actual word (preset or custom), not the literal "Other".
+function MoodPicker({ value, onChange }) {
+  const presets = MOODS.filter(m => m !== 'Other');
+  const isCustom = !!value && !presets.includes(value);
+  const [otherOpen, setOtherOpen] = useState(isCustom);
+
+  const pickPreset = (w) => {
+    onChange(value === w ? '' : w);
+    setOtherOpen(false);
+  };
+  const toggleOther = () => {
+    setOtherOpen(prev => {
+      const next = !prev;
+      if (next) {
+        // Opening: clear any preset selection so the input becomes the source
+        if (presets.includes(value)) onChange('');
+      } else {
+        // Closing: clear any custom mood
+        if (isCustom) onChange('');
+      }
+      return next;
+    });
+  };
+
+  const otherSelected = otherOpen || isCustom;
+
+  const chip = (label, selected, onClick) => (
+    <button type="button" onClick={onClick}
+      style={{
+        padding: '10px 16px', borderRadius: 8,
+        border: `1.5px solid ${selected ? '#9b1844' : '#e3dcc8'}`,
+        background: selected ? '#9b1844' : '#fff',
+        color: selected ? '#fff' : '#1f1d1a',
+        fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+      }}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {presets.map(w => chip(w, value === w, () => pickPreset(w)))}
+        {chip('Other', otherSelected, toggleOther)}
+      </div>
+      {otherSelected && (
+        <input
+          type="text"
+          autoFocus={otherOpen && !isCustom}
+          value={isCustom ? value : ''}
+          maxLength={30}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Type your own word…"
+          style={{
+            marginTop: 12, width: '100%', maxWidth: 320,
+            padding: '10px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+            fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+          }}/>
+      )}
+    </div>
   );
 }
 
@@ -812,6 +1079,7 @@ function FormShell({ eyebrow, title, onCancel, onSave, canSave, children }) {
 function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
   const [editingId, setEditingId] = useState(null);
+  const [filter, setFilter] = useState({ q: '', month: '', values: [], skills: [] });
 
   if (composing) {
     return (
@@ -832,6 +1100,9 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
       );
     }
   }
+
+  const months = monthsFromEntries(entries);
+  const filtered = applyFilter(entries, filter, ['title', 'story', 'shift', 'wentWell', 'differently', 'discuss', 'caption']);
 
   const yellowTotal = entries.reduce((n, e) => n + (e.yellowTickets || 0), 0);
   const blueTotal   = entries.reduce((n, e) => n + (e.blueTickets   || 0), 0);
@@ -861,13 +1132,20 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
       {entries.length === 0 ? (
         <EmptyState label="No long tutorials yet."/>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => (
-            <TutorialCard key={e.id} entry={e}
-              onEdit={() => setEditingId(e.id)}
-              onDelete={() => onDelete(e.id)}/>
-          ))}
-        </div>
+        <>
+          <FilterBar filter={filter} onChange={setFilter} availableMonths={months}/>
+          {filtered.length === 0 ? (
+            <EmptyState label="No long tutorials match those filters."/>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {filtered.map(e => (
+                <TutorialCard key={e.id} entry={e}
+                  onEdit={() => setEditingId(e.id)}
+                  onDelete={() => onDelete(e.id)}/>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1043,6 +1321,7 @@ function TutorialForm({ onSave, onCancel, initial }) {
 function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
   const [composing, setComposing] = useState(entries.length === 0);
   const [editingId, setEditingId] = useState(null);
+  const [filter, setFilter] = useState({ q: '', month: '', values: [], skills: [] });
 
   if (composing) {
     return (
@@ -1063,6 +1342,8 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
     }
   }
 
+  const months = monthsFromEntries(entries);
+  const filtered = applyFilter(entries, filter, ['title', 'author', 'review']);
   const avg = entries.length ? (entries.reduce((s, e) => s + (e.rating || 0), 0) / entries.length) : 0;
 
   return (
@@ -1097,13 +1378,20 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
       {entries.length === 0 ? (
         <EmptyState label="No books logged yet."/>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {entries.map(e => (
-            <LibraryCard key={e.id} entry={e}
-              onEdit={() => setEditingId(e.id)}
-              onDelete={() => onDelete(e.id)}/>
-          ))}
-        </div>
+        <>
+          <FilterBar filter={filter} onChange={setFilter} kind="library" availableMonths={months}/>
+          {filtered.length === 0 ? (
+            <EmptyState label="No books match those filters."/>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {filtered.map(e => (
+                <LibraryCard key={e.id} entry={e}
+                  onEdit={() => setEditingId(e.id)}
+                  onDelete={() => onDelete(e.id)}/>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1441,9 +1729,7 @@ function BookView({ state }) {
         <EmptyState label="No chapters in your saga yet."/>
       ) : (
         <>
-          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="outline" onClick={() => window.print()}>Export to PDF</Button>
-          </div>
+          <ExportControls entries={entries} state={state}/>
           <BookSpread entry={entry}/>
           <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
@@ -1452,23 +1738,71 @@ function BookView({ state }) {
             </div>
             <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
           </div>
-
-          {/* Print-only layout: all reflections as full pages */}
-          <BookPrintable entries={entries}/>
         </>
       )}
     </div>
   );
 }
 
+// Saga export controls. Two modes:
+//   - Full: every entry, with a generic cover.
+//   - Since last tutorial: only entries written AFTER the most recent
+//     long-tutorial entry's date — exactly what the pupil + tutor need
+//     at the next meeting.
+function ExportControls({ entries, state }) {
+  const [printMode, setPrintMode] = useState('all');
+  const [printPending, setPrintPending] = useState(false);
+
+  const lastTutorial = useMemo(() => {
+    return [...(state.tutorial || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+  }, [state.tutorial]);
+  const sinceDate = lastTutorial?.date || null;
+
+  const filteredEntries = useMemo(() => {
+    if (printMode !== 'sinceLast' || !sinceDate) return entries;
+    return entries.filter(e => (e.date || '') > sinceDate);
+  }, [entries, printMode, sinceDate]);
+
+  // Trigger window.print after the DOM has actually rendered the new mode
+  useEffect(() => {
+    if (!printPending) return;
+    const id = requestAnimationFrame(() => {
+      window.print();
+      setPrintPending(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [printPending, printMode]);
+
+  const exportAll = () => { setPrintMode('all'); setPrintPending(true); };
+  const exportSinceLast = () => { setPrintMode('sinceLast'); setPrintPending(true); };
+
+  return (
+    <>
+      <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+        {sinceDate && (
+          <Button variant="outline" onClick={exportSinceLast}>
+            Export since last long tutorial
+          </Button>
+        )}
+        <Button variant="outline" onClick={exportAll}>Export all to PDF</Button>
+      </div>
+      <BookPrintable
+        entries={filteredEntries}
+        sinceLabel={printMode === 'sinceLast' ? `Since last long tutorial · ${formatDate(sinceDate)}` : null}/>
+    </>
+  );
+}
+
 // ─── Printable book layout (visible only via @media print) ───
-function BookPrintable({ entries }) {
+function BookPrintable({ entries, sinceLabel }) {
   return (
     <div className="rj-print">
       <div className="rj-print-page rj-print-cover">
         <div style={{ textAlign: 'center' }}>
           <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey" className="rj-print-hero"/>
-          <div className="rj-print-byline">A Reflective Journal · Reflections, bound.</div>
+          <div className="rj-print-byline">
+            {sinceLabel || 'A Reflective Journal · Reflections, bound.'}
+          </div>
         </div>
       </div>
       {entries.map(e => (
