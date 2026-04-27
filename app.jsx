@@ -17,7 +17,14 @@ function useJournal() {
     return EMPTY;
   });
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      // Most often QuotaExceededError — the journal got too big to fit in
+      // localStorage (~5MB on iOS). Tell the App via a custom event so it
+      // can show a toast.
+      window.dispatchEvent(new CustomEvent('rj:storage-error', { detail: e }));
+    }
   }, [state]);
   return [state, setState];
 }
@@ -48,6 +55,17 @@ function App() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(null);
   };
+
+  // Surface localStorage quota failures (or other write errors) so pupils
+  // know their entry didn't actually persist.
+  useEffect(() => {
+    const onErr = () => showToast(
+      "Couldn't save — your journal is too big for local storage. Try removing an older photo or video.",
+      { durationMs: 9000 }
+    );
+    window.addEventListener('rj:storage-error', onErr);
+    return () => window.removeEventListener('rj:storage-error', onErr);
+  }, []);
 
   const patch = (fn) => setState(fn);
   const addWeekly      = (e) => { patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));         showToast('Reflection saved'); };
@@ -864,6 +882,12 @@ function FilterBar({ filter, onChange, kind = 'reflection', availableMonths = []
   );
 }
 
+// Sort entries newest-first by `date`. Entries with no date sink to the
+// bottom. Stable-ish — same-date entries keep insertion order.
+function sortByDateDesc(entries) {
+  return [...entries].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+
 // Bucket an ISO date string into a human label relative to today.
 function dateBucket(iso) {
   if (!iso) return 'Undated';
@@ -974,7 +998,7 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['moment', 'proud', 'tricky', 'caption', 'mood']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['moment', 'proud', 'tricky', 'caption', 'mood']));
 
   return (
     <div>
@@ -1271,7 +1295,7 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['title', 'story', 'shift', 'wentWell', 'differently', 'discuss', 'caption']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['title', 'story', 'shift', 'wentWell', 'differently', 'discuss', 'caption']));
 
   const yellowTotal = entries.reduce((n, e) => n + (e.yellowTickets || 0), 0);
   const blueTotal   = entries.reduce((n, e) => n + (e.blueTickets   || 0), 0);
@@ -1516,7 +1540,7 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['title', 'author', 'review']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['title', 'author', 'review']));
   const avg = entries.length ? (entries.reduce((s, e) => s + (e.rating || 0), 0) / entries.length) : 0;
 
   return (
@@ -1766,7 +1790,7 @@ function TrophiesView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['title', 'description', 'process', 'why']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['title', 'description', 'process', 'why']));
 
   return (
     <div>
@@ -1863,7 +1887,7 @@ function TrophyCard({ entry, onEdit, onDelete }) {
       {open && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #efe9d9', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {entry.video && (
-            <video src={entry.video} controls preload="metadata"
+            <DataVideo src={entry.video}
               style={{ width: '100%', maxHeight: 380, borderRadius: 8, background: '#000' }}/>
           )}
           {entry.description && <DetailRow label="The task"           color="#9b1844" body={entry.description}/>}
@@ -1955,9 +1979,12 @@ function VideoUpload({ value, onChange }) {
   const onFile = (file) => {
     if (!file) return;
     setError(null);
-    const cap = 5 * 1024 * 1024; // 5MB
+    // Browser localStorage caps at ~5MB total per origin (less on iOS), and
+    // a single video at 2MB encodes to ~2.7MB base64, leaving room for
+    // photos and other entries. Bigger than this needs a backend.
+    const cap = 2 * 1024 * 1024; // 2MB
     if (file.size > cap) {
-      setError(`That video is ${(file.size / 1024 / 1024).toFixed(1)}MB. The browser can store clips up to about ${(cap / 1024 / 1024).toFixed(0)}MB — try a shorter or lower-quality recording.`);
+      setError(`That video is ${(file.size / 1024 / 1024).toFixed(1)}MB. The browser can store clips up to about ${(cap / 1024 / 1024).toFixed(0)}MB — try a shorter clip or a lower-quality setting.`);
       return;
     }
     const reader = new FileReader();
@@ -1968,9 +1995,9 @@ function VideoUpload({ value, onChange }) {
   if (value) {
     return (
       <div>
-        <video src={value} controls preload="metadata"
+        <DataVideo src={value}
           style={{ width: '100%', maxHeight: 320, borderRadius: 10, background: '#000', display: 'block' }}/>
-        <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+        <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button type="button" onClick={() => onChange(null)}
             style={{
               border: '1.5px solid #9b1844', background: '#fff', color: '#9b1844',
@@ -1990,7 +2017,7 @@ function VideoUpload({ value, onChange }) {
             Replace
           </button>
         </div>
-        <input ref={inputRef} type="file" accept="video/*" capture="user" style={{ display: 'none' }}
+        <input ref={inputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" style={{ display: 'none' }}
           onChange={(e) => onFile(e.target.files?.[0])}/>
       </div>
     );
@@ -2014,13 +2041,58 @@ function VideoUpload({ value, onChange }) {
         <span style={{ fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
           Add a walkthrough video
         </span>
+        <span style={{ fontSize: 11, fontStyle: 'italic', color: '#7c7c7c', textAlign: 'center', maxWidth: 320 }}>
+          MP4 plays everywhere. iPhone .MOV files mostly do too — if a clip won't play, re-record in your camera's "Most Compatible" setting.
+        </span>
       </button>
       {error && (
         <div style={{ marginTop: 10, fontSize: 12, color: '#9b1844', fontStyle: 'italic' }}>{error}</div>
       )}
-      <input ref={inputRef} type="file" accept="video/*" capture="user" style={{ display: 'none' }}
+      <input ref={inputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" style={{ display: 'none' }}
         onChange={(e) => onFile(e.target.files?.[0])}/>
     </div>
+  );
+}
+
+// <video> wrapper that plays reliably across browsers. Converts dataURL
+// sources to a Blob URL — Safari has known issues streaming `<video>` from
+// `data:` URLs, especially when seeking. Adds `playsInline` so iOS can play
+// inline rather than forcing fullscreen.
+function DataVideo({ src, style }) {
+  const [resolvedSrc, setResolvedSrc] = useState(null);
+  useEffect(() => {
+    if (!src) { setResolvedSrc(null); return; }
+    if (!src.startsWith('data:')) {
+      setResolvedSrc(src);
+      return;
+    }
+    let revoked = false;
+    let urlToRevoke = null;
+    fetch(src)
+      .then(r => r.blob())
+      .then(blob => {
+        if (revoked) return;
+        urlToRevoke = URL.createObjectURL(blob);
+        setResolvedSrc(urlToRevoke);
+      })
+      .catch(() => setResolvedSrc(src)); // fall back to the data URL itself
+    return () => {
+      revoked = true;
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+    };
+  }, [src]);
+
+  if (!resolvedSrc) {
+    return <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Loading video…</div>;
+  }
+  return (
+    <video
+      key={resolvedSrc}
+      src={resolvedSrc}
+      controls
+      playsInline
+      preload="metadata"
+      style={style}/>
   );
 }
 
@@ -2166,7 +2238,8 @@ function BookView({ state }) {
       ...(state.books || []).map(e => ({ ...e, _kind: 'book' })),
       ...(state.works || []).map(e => ({ ...e, _kind: 'work' })),
     ];
-    return all.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    // Newest first — page 1 is the most recent entry; flip back to revisit older ones.
+    return all.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [state]);
   const total = entries.length;
   const [index, setIndex] = useState(0);
@@ -2453,7 +2526,7 @@ function BookSpread({ entry }) {
               style={{ width: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(31,29,26,0.1)', aspectRatio: '4/3', objectFit: 'cover' }}/>
           )}
           {entry.video && (
-            <video src={entry.video} controls preload="metadata"
+            <DataVideo src={entry.video}
               style={{ width: '100%', borderRadius: 6, background: '#000', maxHeight: 240 }}/>
           )}
           {(entry.values?.length > 0 || entry.skills?.length > 0) && (
