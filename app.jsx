@@ -2231,7 +2231,7 @@ function ScrapbookCollage({ items }) {
 // at a time. Left page = context (date, kind, values, optional photo).
 // Right page = body. ← / → navigates.
 function BookView({ state }) {
-  const entries = useMemo(() => {
+  const allEntries = useMemo(() => {
     const all = [
       ...state.weekly.map(e => ({ ...e, _kind: 'weekly' })),
       ...state.tutorial.map(e => ({ ...e, _kind: 'tutorial' })),
@@ -2241,8 +2241,17 @@ function BookView({ state }) {
     // Newest first — page 1 is the most recent entry; flip back to revisit older ones.
     return all.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [state]);
+
+  const months = useMemo(() => monthsFromEntries(allEntries), [allEntries]);
+  const [monthFilter, setMonthFilter] = useState('');
+  const entries = useMemo(() => (
+    monthFilter ? allEntries.filter(e => (e.date || '').slice(0, 7) === monthFilter) : allEntries
+  ), [allEntries, monthFilter]);
+
   const total = entries.length;
   const [index, setIndex] = useState(0);
+  // Reset to page 1 when the filter changes
+  useEffect(() => { setIndex(0); }, [monthFilter]);
   const clampedIndex = Math.min(index, Math.max(0, total - 1));
   const entry = entries[clampedIndex];
 
@@ -2268,19 +2277,49 @@ function BookView({ state }) {
         </p>
       </div>
 
-      {total === 0 ? (
+      {allEntries.length === 0 ? (
         <EmptyState label="No chapters in your saga yet."/>
       ) : (
         <>
-          <ExportControls entries={entries} state={state}/>
-          <BookSpread entry={entry}/>
-          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
-            <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-              Page {clampedIndex + 1} of {total}
-            </div>
-            <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
+          {/* Filter row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700 }}>
+              Show
+            </span>
+            <select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}
+              style={{
+                padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+                fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+                minWidth: 180,
+              }}>
+              <option value="">All months</option>
+              {months.map(m => (
+                <option key={m} value={m}>{formatMonth(m)}</option>
+              ))}
+            </select>
+            {monthFilter && (
+              <span style={{ fontSize: 11, color: '#7c7c7c', fontStyle: 'italic' }}>
+                {total} {total === 1 ? 'entry' : 'entries'} in {formatMonth(monthFilter)}
+              </span>
+            )}
+            <div style={{ flex: 1 }}/>
+            {total > 0 && <ExportControls entries={entries} state={state}/>}
           </div>
+
+          {total === 0 ? (
+            <EmptyState label={`No entries in ${formatMonth(monthFilter)}.`}/>
+          ) : (
+            <>
+              <BookSpread entry={entry}/>
+              <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
+                <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  Page {clampedIndex + 1} of {total}
+                </div>
+                <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
@@ -2512,7 +2551,8 @@ function BookSpread({ entry }) {
         {/* Left page — photo + title + values/skills */}
         <div className="rj-page-left" style={{
           background: pageBg, padding: '36px 34px 36px 38px',
-          minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
+          alignSelf: 'start',
+          borderRight: '1px solid rgba(155,24,68,0.08)',
           display: 'flex', flexDirection: 'column', gap: 14,
         }}>
           <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#c98508', fontWeight: 700 }}>
@@ -2568,8 +2608,9 @@ function BookSpread({ entry }) {
         {/* Left page — cover, title, author, stars, date */}
         <div className="rj-page-left" style={{
           background: pageBg, padding: '36px 34px 36px 38px',
-          minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center', gap: 18,
+          alignSelf: 'start',
+          borderRight: '1px solid rgba(155,24,68,0.08)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 18,
         }}>
           <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#558b3f', fontWeight: 700 }}>
             Book · {formatDate(entry.date)}
@@ -2622,7 +2663,7 @@ function BookSpread({ entry }) {
       {/* Left page */}
       <div className="rj-page-left" style={{
         background: pageBg, padding: '36px 34px 36px 38px',
-        minHeight: 520,
+        alignSelf: 'start',
         borderRight: '1px solid rgba(155,24,68,0.08)',
       }}>
         <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>
