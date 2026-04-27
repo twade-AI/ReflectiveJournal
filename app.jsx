@@ -6,7 +6,7 @@ const { useState, useEffect, useMemo } = React;
 
 // ─── Storage ──────────────────────────────────────────────────
 const STORAGE_KEY = 'haileybury-journal-v1';
-const EMPTY = { pupil: { name: '', year: '', house: '', tutor: '' }, weekly: [], tutorial: [], books: [] };
+const EMPTY = { pupil: { name: '', year: '', house: '', tutor: '' }, weekly: [], tutorial: [], books: [], works: [] };
 
 function useJournal() {
   const [state, setState] = useState(() => {
@@ -53,9 +53,11 @@ function App() {
   const addWeekly      = (e) => { patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));         showToast('Reflection saved'); };
   const addTutorial    = (e) => { patch(s => ({ ...s, tutorial: [{ ...e, id: newId() }, ...s.tutorial] }));        showToast('Long tutorial saved'); };
   const addBook        = (e) => { patch(s => ({ ...s, books:    [{ ...e, id: newId() }, ...(s.books || [])] }));   showToast('Book saved'); };
+  const addWork        = (e) => { patch(s => ({ ...s, works:    [{ ...e, id: newId() }, ...(s.works || [])] }));   showToast('Trophy added'); };
   const updateWeekly   = (id, e) => { patch(s => ({ ...s, weekly:   s.weekly.map(x   => x.id === id ? { ...x, ...e } : x) })); showToast('Reflection updated'); };
   const updateTutorial = (id, e) => { patch(s => ({ ...s, tutorial: s.tutorial.map(x => x.id === id ? { ...x, ...e } : x) })); showToast('Long tutorial updated'); };
   const updateBook     = (id, e) => { patch(s => ({ ...s, books:    (s.books || []).map(x => x.id === id ? { ...x, ...e } : x) })); showToast('Book updated'); };
+  const updateWork     = (id, e) => { patch(s => ({ ...s, works:    (s.works || []).map(x => x.id === id ? { ...x, ...e } : x) })); showToast('Trophy updated'); };
 
   // Delete with undo: actually remove the entry, but keep a copy in the toast
   // so the user can put it back within 6 seconds.
@@ -63,7 +65,7 @@ function App() {
     const entry = (state[kind] || []).find(x => x.id === id);
     if (!entry) return;
     patch(s => ({ ...s, [kind]: (s[kind] || []).filter(x => x.id !== id) }));
-    const label = kind === 'tutorial' ? 'Long tutorial' : kind === 'books' ? 'Book' : 'Reflection';
+    const label = kind === 'tutorial' ? 'Long tutorial' : kind === 'books' ? 'Book' : kind === 'works' ? 'Trophy' : 'Reflection';
     showToast(`${label} deleted`, {
       durationMs: 6000,
       undo: () => {
@@ -88,6 +90,7 @@ function App() {
         {view === 'weekly'    && <WeeklyView    entries={state.weekly}      onAdd={addWeekly}   onUpdate={updateWeekly}   onDelete={(id) => removeEntry('weekly', id)}/>}
         {view === 'tutorial'  && <TutorialView  entries={state.tutorial}    onAdd={addTutorial} onUpdate={updateTutorial} onDelete={(id) => removeEntry('tutorial', id)}/>}
         {view === 'library'   && <LibraryView   entries={state.books || []} onAdd={addBook}     onUpdate={updateBook}     onDelete={(id) => removeEntry('books', id)}/>}
+        {view === 'trophies'  && <TrophiesView  entries={state.works || []} onAdd={addWork}     onUpdate={updateWork}     onDelete={(id) => removeEntry('works', id)}/>}
         {view === 'scrapbook' && <ScrapbookView state={state}/>}
         {view === 'book'      && <BookView      state={state}/>}
       </main>
@@ -137,6 +140,7 @@ function NavBar({ view, onNav, pupil }) {
     { id: 'weekly',    label: 'Reflections' },
     { id: 'tutorial',  label: 'Long Tutorials' },
     { id: 'library',   label: 'The Library' },
+    { id: 'trophies',  label: 'Trophies' },
     { id: 'scrapbook', label: 'Relics' },
     { id: 'book',      label: 'The Saga' },
   ];
@@ -188,9 +192,11 @@ function NavBar({ view, onNav, pupil }) {
 function ProfileView({ state, onNav, onUpdatePupil }) {
   const { pupil, weekly, tutorial } = state;
   const books = state.books || [];
+  const works = state.works || [];
   const totalWeekly = weekly.length;
   const totalTutorial = tutorial.length;
   const totalBooks = books.length;
+  const totalWorks = works.length;
   const yellowTotal = tutorial.reduce((n, e) => n + (e.yellowTickets || 0), 0);
   const blueTotal   = tutorial.reduce((n, e) => n + (e.blueTickets   || 0), 0);
 
@@ -259,14 +265,15 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
   // Auto-summary paragraph (first-person, rule-based — a real LLM summary is a
   // future backend job). The pupil narrates their own journal so far.
   const summary = useMemo(() => {
-    if (totalWeekly + totalTutorial + totalBooks === 0) {
-      return `I haven't set off on the journey yet — my first reflection or book is just a tap away.`;
+    if (totalWeekly + totalTutorial + totalBooks + totalWorks === 0) {
+      return `I haven't set off on the journey yet — my first reflection, book, or trophy is just a tap away.`;
     }
     const bits = [];
     const counts = [
       totalWeekly   ? `${totalWeekly} reflection${totalWeekly === 1 ? '' : 's'}`        : null,
       totalTutorial ? `${totalTutorial} long tutorial${totalTutorial === 1 ? '' : 's'}` : null,
       totalBooks    ? `${totalBooks} book${totalBooks === 1 ? '' : 's'}`                : null,
+      totalWorks    ? `${totalWorks} ${totalWorks === 1 ? 'piece' : 'pieces'} of proud work` : null,
     ].filter(Boolean);
     bits.push(`So far I've logged ${joinList(counts)}.`);
 
@@ -285,13 +292,13 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
         bits.push(`My favourite read so far is "${topRated.title}"${topRated.author ? ` by ${topRated.author}` : ''}.`);
       }
     }
-    const mostRecent = [...weekly, ...tutorial, ...books].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+    const mostRecent = [...weekly, ...tutorial, ...books, ...works].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
     if (mostRecent) {
       const title = mostRecent.title || mostRecent.moment || mostRecent.story || '';
       if (title) bits.push(`Most recently I wrote about "${title.slice(0, 90)}${title.length > 90 ? '…' : ''}".`);
     }
     return bits.join(' ');
-  }, [weekly, tutorial, books, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial, totalBooks]);
+  }, [weekly, tutorial, books, works, valueCounts, topValueId, topValue, yellowTotal, blueTotal, totalWeekly, totalTutorial, totalBooks, totalWorks]);
 
   const firstLetter = summary.charAt(0);
   const restSummary = summary.slice(1);
@@ -336,6 +343,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
         <Button onClick={() => onNav('weekly')}>+ New reflection</Button>
         <Button variant="outline" onClick={() => onNav('tutorial')}>+ Prep for long tutorial</Button>
         <Button variant="outline" onClick={() => onNav('library')}>+ Log a book</Button>
+        <Button variant="outline" onClick={() => onNav('trophies')}>+ Add a trophy</Button>
       </div>
 
       <OrnamentDivider/>
@@ -348,6 +356,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
         <StatSeal label="Reflections"    value={totalWeekly}   accent="#9b1844"/>
         <StatSeal label="Long tutorials" value={totalTutorial} accent="#9b1844"/>
         <StatSeal label="Books read"     value={totalBooks}    accent="#558b3f"/>
+        <StatSeal label="Trophies"       value={totalWorks}    accent="#c98508"/>
         <StatSeal label="Yellow tickets" value={yellowTotal}   accent="#c98508"/>
         <StatSeal label="Blue tickets"   value={blueTotal}     accent="#2a2b7c"/>
       </div>
@@ -1727,6 +1736,290 @@ function BookCover({ photo, title, small }) {
       <div style={{ fontFamily: "'Playfair Display', serif", fontSize: small ? 10.5 : 13, fontStyle: 'italic', lineHeight: 1.2 }}>
         {(title || 'Untitled').slice(0, 32)}{(title || '').length > 32 ? '…' : ''}
       </div>
+    </div>
+  );
+}
+
+// ─── Trophies (proud work log) ───────────────────────────────
+function TrophiesView({ entries, onAdd, onUpdate, onDelete }) {
+  const [composing, setComposing] = useState(entries.length === 0);
+  const [editingId, setEditingId] = useState(null);
+  const [filter, setFilter] = useState({ q: '', month: '', values: [], skills: [] });
+
+  if (composing) {
+    return (
+      <WorkForm
+        onCancel={entries.length > 0 ? () => setComposing(false) : null}
+        onSave={(entry) => { onAdd(entry); setComposing(false); }}/>
+    );
+  }
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      return (
+        <WorkForm
+          initial={entry}
+          onCancel={() => setEditingId(null)}
+          onSave={(patch) => { onUpdate(editingId, patch); setEditingId(null); }}/>
+      );
+    }
+  }
+
+  const months = monthsFromEntries(entries);
+  const filtered = applyFilter(entries, filter, ['title', 'description', 'process', 'why']);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>Trophies</div>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 40, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+            Work I'm <span style={{ fontStyle: 'italic', color: '#9b1844' }}>proud of.</span>
+          </h1>
+          <p style={{ fontSize: 14.5, color: '#5f5a52', marginTop: 10, maxWidth: 540, lineHeight: 1.5 }}>
+            Log a piece of work that made you proud. Add a photo (and an optional video walking through it). The Compass turns with the values and skills you tag.
+          </p>
+        </div>
+        <Button onClick={() => setComposing(true)}>+ Add a trophy</Button>
+      </div>
+
+      {entries.length === 0 ? (
+        <EmptyState label="No trophies yet."/>
+      ) : (
+        <>
+          <FilterBar filter={filter} onChange={setFilter} availableMonths={months}/>
+          {filtered.length === 0 ? (
+            <EmptyState label="No trophies match those filters."/>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {groupEntries(filtered).map(item =>
+                item.type === 'heading' ? (
+                  <DateHeading key={item.key} label={item.label}/>
+                ) : (
+                  <TrophyCard key={item.key} entry={item.entry}
+                    onEdit={() => setEditingId(item.entry.id)}
+                    onDelete={() => onDelete(item.entry.id)}/>
+                )
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function TrophyCard({ entry, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: 16, alignItems: 'flex-start' }}>
+        {entry.photo ? (
+          <img src={entry.photo} alt={entry.title || ''}
+            style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 6, boxShadow: '0 2px 8px rgba(31,29,26,0.12)' }}/>
+        ) : (
+          <div style={{
+            width: 120, height: 90, borderRadius: 6,
+            background: 'linear-gradient(135deg, #c98508 0%, #8a6d2a 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbf5e4',
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M5 4h14v3a4 4 0 01-4 4h-6a4 4 0 01-4-4V4zM12 11v5M9 16h6M8 20h8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
+        <div>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c98508', fontWeight: 700, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+            Trophy · {formatDate(entry.date)}
+            {entry.video && (
+              <span style={{ background: '#fdeecb', color: '#8a6d2a', padding: '2px 8px', borderRadius: 999, fontSize: 9, letterSpacing: '0.08em' }}>
+                ▶ Video
+              </span>
+            )}
+          </div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: '#1f1d1a', fontStyle: 'italic', lineHeight: 1.25 }}>
+            {entry.title || 'Untitled'}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={`v-${id}`} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+            {(entry.skills || []).map(id => SKILL_BY_ID[id] && <ValueTag key={`s-${id}`} value={SKILL_BY_ID[id]} selected size="sm"/>)}
+          </div>
+        </div>
+        <div className="rj-card-actions" style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => setOpen(o => !o)}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            {open ? 'Less' : 'More'}
+          </button>
+          <button onClick={onEdit}
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }}>
+            Edit
+          </button>
+          <button onClick={onDelete} title="Delete"
+            style={{ border: 'none', background: 'transparent', color: '#9b1844', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }}>
+            {Icons.trash}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #efe9d9', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {entry.video && (
+            <video src={entry.video} controls preload="metadata"
+              style={{ width: '100%', maxHeight: 380, borderRadius: 8, background: '#000' }}/>
+          )}
+          {entry.description && <DetailRow label="The task"           color="#9b1844" body={entry.description}/>}
+          {entry.process     && <DetailRow label="How I made it"     color="#558b3f" body={entry.process}/>}
+          {entry.why         && <DetailRow label="Why I'm proud"     color="#c98508" body={entry.why}/>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function WorkForm({ onSave, onCancel, initial }) {
+  const editing = !!initial;
+  const [date, setDate]               = useState(initial?.date        ?? todayISO());
+  const [title, setTitle]             = useState(initial?.title       ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [process, setProcess]         = useState(initial?.process     ?? '');
+  const [why, setWhy]                 = useState(initial?.why         ?? '');
+  const [photo, setPhoto]             = useState(initial?.photo       ?? null);
+  const [video, setVideo]             = useState(initial?.video       ?? null);
+  const [values, setValues]           = useState(initial?.values      ?? []);
+  const [skills, setSkills]           = useState(initial?.skills      ?? []);
+
+  // Photo is required to save (per the brief).
+  const canSave = title.trim().length > 0 && !!photo;
+  const save = () => {
+    if (!canSave) return;
+    onSave({
+      kind: 'work', date,
+      title: title.trim(),
+      description: description.trim(),
+      process: process.trim(),
+      why: why.trim(),
+      photo, video,
+      values, skills,
+    });
+  };
+
+  return (
+    <FormShell
+      eyebrow={editing ? 'Edit Trophy' : 'New Trophy'}
+      title={editing
+        ? <>Edit this <span style={{ fontStyle: 'italic', color: '#9b1844' }}>trophy.</span></>
+        : <>Work I'm <span style={{ fontStyle: 'italic', color: '#9b1844' }}>proud of.</span></>}
+      onCancel={onCancel}
+      onSave={save}
+      canSave={canSave}>
+      <Field label="Title"><TextInput value={title} onChange={setTitle} placeholder="e.g. My DT bridge model"/></Field>
+
+      <Field label="Date"><TextInput type="date" value={date} onChange={setDate}/></Field>
+
+      <Field label="The task" hint="What were you asked to do?">
+        <TextArea value={description} onChange={setDescription} rows={4}/>
+      </Field>
+
+      <Field label="How I put it together" hint="Walk through your learning process — the steps, the choices, the help you got.">
+        <TextArea value={process} onChange={setProcess} rows={6}/>
+      </Field>
+
+      <Field label="Why I'm proud of it" hint="What did this teach you, or what changed in you because of it?">
+        <TextArea value={why} onChange={setWhy} rows={5}/>
+      </Field>
+
+      <Field label="Photo of the work" hint="Required — a photo of the finished thing.">
+        <PhotoUpload value={photo} onChange={setPhoto}/>
+      </Field>
+
+      <Field label="Walkthrough video (optional)" hint="A short clip explaining your answers to the prompts above. Small clips work best (the journal stores them in your browser).">
+        <VideoUpload value={video} onChange={setVideo}/>
+      </Field>
+
+      <Field label="Values this shows">
+        <ValuePicker selected={values} onChange={setValues}/>
+      </Field>
+
+      <Field label="Skills this shows">
+        <ValuePicker selected={skills} onChange={setSkills} items={SKILLS}/>
+      </Field>
+    </FormShell>
+  );
+}
+
+// Video upload + preview. Stores the video as a dataURL (same pattern as
+// PhotoUpload). For the prototype we cap the size at ~5MB so the journal
+// doesn't blow past localStorage's quota; larger clips will need a backend.
+function VideoUpload({ value, onChange }) {
+  const inputRef = React.useRef(null);
+  const [error, setError] = useState(null);
+  const onFile = (file) => {
+    if (!file) return;
+    setError(null);
+    const cap = 5 * 1024 * 1024; // 5MB
+    if (file.size > cap) {
+      setError(`That video is ${(file.size / 1024 / 1024).toFixed(1)}MB. The browser can store clips up to about ${(cap / 1024 / 1024).toFixed(0)}MB — try a shorter or lower-quality recording.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  if (value) {
+    return (
+      <div>
+        <video src={value} controls preload="metadata"
+          style={{ width: '100%', maxHeight: 320, borderRadius: 10, background: '#000', display: 'block' }}/>
+        <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+          <button type="button" onClick={() => onChange(null)}
+            style={{
+              border: '1.5px solid #9b1844', background: '#fff', color: '#9b1844',
+              padding: '8px 14px', borderRadius: 999, fontFamily: 'inherit',
+              fontWeight: 700, fontSize: 12, letterSpacing: '0.08em',
+              textTransform: 'uppercase', cursor: 'pointer',
+            }}>
+            Remove video
+          </button>
+          <button type="button" onClick={() => inputRef.current?.click()}
+            style={{
+              border: '1.5px solid #e3dcc8', background: '#fff', color: '#5f5a52',
+              padding: '8px 14px', borderRadius: 999, fontFamily: 'inherit',
+              fontWeight: 700, fontSize: 12, letterSpacing: '0.08em',
+              textTransform: 'uppercase', cursor: 'pointer',
+            }}>
+            Replace
+          </button>
+        </div>
+        <input ref={inputRef} type="file" accept="video/*" capture="user" style={{ display: 'none' }}
+          onChange={(e) => onFile(e.target.files?.[0])}/>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button type="button" onClick={() => inputRef.current?.click()}
+        style={{
+          width: '100%', padding: '24px 16px',
+          border: '1.5px dashed #c9a74a', borderRadius: 10,
+          background: 'rgba(253,238,203,0.4)', color: '#8a6d2a',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 8, cursor: 'pointer', fontFamily: 'inherit',
+          transition: 'background .12s',
+        }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="6" width="14" height="12" rx="2"/>
+          <path d="M17 10l4-3v10l-4-3"/>
+        </svg>
+        <span style={{ fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
+          Add a walkthrough video
+        </span>
+      </button>
+      {error && (
+        <div style={{ marginTop: 10, fontSize: 12, color: '#9b1844', fontStyle: 'italic' }}>{error}</div>
+      )}
+      <input ref={inputRef} type="file" accept="video/*" capture="user" style={{ display: 'none' }}
+        onChange={(e) => onFile(e.target.files?.[0])}/>
     </div>
   );
 }
