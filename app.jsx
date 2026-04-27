@@ -2533,42 +2533,51 @@ function PrintSection({ label, body }) {
 }
 
 // Right page of a Saga spread that auto-paginates when its content
-// overflows. The book stays at the default height; long bodies turn the
-// page on the right side. The left page (photo, title, tags) is unchanged.
-function PaginatedRightPage({ entryKey, height = 520, padTop = 36, padRight = 38, padBottom = 36, padLeft = 34, contentStyle, children }) {
+// overflows. The book stays at a default size; long bodies turn the page
+// on the right side. The left page (photo, title, tags) is unchanged.
+//
+// Height is dynamic: the right page sits at `minHeight` by default but
+// stretches to match the left page when it's taller. Usable area is
+// measured from the actual rendered height so pagination remains accurate
+// at any spread size.
+function PaginatedRightPage({ entryKey, minHeight = 720, padTop = 36, padRight = 38, padBottom = 36, padLeft = 34, contentStyle, children }) {
   const innerRef = React.useRef(null);
+  const outerRef = React.useRef(null);
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(1);
-  const usable = height - padTop - padBottom;
+  const [usable, setUsable] = useState(minHeight - padTop - padBottom);
 
   // Reset to page 1 whenever we move to a new entry
   useEffect(() => { setPage(0); }, [entryKey]);
 
-  // Measure overflow after layout. A ResizeObserver re-measures on font /
-  // image-load reflows so the page count stays accurate.
+  // Measure overflow + visible area after layout. ResizeObserver re-measures
+  // on font / image-load reflows so the page count stays accurate.
   React.useLayoutEffect(() => {
-    if (!innerRef.current) return;
+    if (!innerRef.current || !outerRef.current) return;
     let raf = 0;
     const measure = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const el = innerRef.current;
-        if (!el) return;
-        const totalH = el.scrollHeight;
-        setPageCount(Math.max(1, Math.ceil(totalH / usable)));
+        const inner = innerRef.current, outer = outerRef.current;
+        if (!inner || !outer) return;
+        const visibleH = Math.max(1, outer.clientHeight - padTop - padBottom);
+        setUsable(visibleH);
+        const totalH = inner.scrollHeight;
+        setPageCount(Math.max(1, Math.ceil(totalH / visibleH)));
       });
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(innerRef.current);
+    ro.observe(outerRef.current);
     return () => { ro.disconnect(); cancelAnimationFrame(raf); };
-  }, [entryKey, usable, children]);
+  }, [entryKey, padTop, padBottom, children]);
 
   return (
-    <div className="rj-page-right" style={{
+    <div ref={outerRef} className="rj-page-right" style={{
       background: 'linear-gradient(180deg, #fdf6e3 0%, #f7f0d8 100%)',
       padding: `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`,
-      minHeight: height, height: height,
+      minHeight: minHeight,
       position: 'relative', overflow: 'hidden',
     }}>
       <div ref={innerRef} style={{
@@ -2634,7 +2643,7 @@ function BookSpread({ entry }) {
         {/* Left page — photo + title + values/skills */}
         <div className="rj-page-left" style={{
           background: pageBg, padding: '36px 34px 36px 38px',
-          minHeight: 520,
+          minHeight: 720,
           borderRight: '1px solid rgba(155,24,68,0.08)',
           display: 'flex', flexDirection: 'column', gap: 14,
         }}>
@@ -2689,7 +2698,7 @@ function BookSpread({ entry }) {
         {/* Left page — cover, title, author, stars, date */}
         <div className="rj-page-left" style={{
           background: pageBg, padding: '36px 34px 36px 38px',
-          minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
+          minHeight: 720, borderRight: '1px solid rgba(155,24,68,0.08)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center', gap: 18,
         }}>
           <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#558b3f', fontWeight: 700 }}>
@@ -2740,7 +2749,7 @@ function BookSpread({ entry }) {
       {/* Left page */}
       <div className="rj-page-left" style={{
         background: pageBg, padding: '36px 34px 36px 38px',
-        minHeight: 520,
+        minHeight: 720,
         borderRight: '1px solid rgba(155,24,68,0.08)',
       }}>
         <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 8 }}>
