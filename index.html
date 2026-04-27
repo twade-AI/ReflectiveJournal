@@ -40,8 +40,8 @@
     /* Saga: stack the book pages and hide the spine on narrow screens */
     .rj-spread { grid-template-columns: 1fr !important; }
     .rj-spread .rj-spine { display: none !important; }
-    .rj-spread .rj-page-left  { border-right: none !important; border-bottom: 1px solid rgba(155,24,68,0.08) !important; padding: 28px 22px !important; min-height: 0 !important; }
-    .rj-spread .rj-page-right { padding: 28px 22px !important; min-height: 0 !important; }
+    .rj-spread .rj-page-left  { border-right: none !important; border-bottom: 1px solid rgba(155,24,68,0.08) !important; padding: 28px 22px !important; min-height: 0 !important; align-self: stretch !important; }
+    .rj-spread .rj-page-right { padding: 28px 22px !important; min-height: 0 !important; align-self: stretch !important; }
 
     /* Card action row wraps under the title rather than overflowing */
     .rj-card-actions { flex-wrap: wrap; }

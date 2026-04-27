@@ -2231,7 +2231,7 @@ function ScrapbookCollage({ items }) {
 // at a time. Left page = context (date, kind, values, optional photo).
 // Right page = body. ← / → navigates.
 function BookView({ state }) {
-  const entries = useMemo(() => {
+  const allEntries = useMemo(() => {
     const all = [
       ...state.weekly.map(e => ({ ...e, _kind: 'weekly' })),
       ...state.tutorial.map(e => ({ ...e, _kind: 'tutorial' })),
@@ -2241,8 +2241,17 @@ function BookView({ state }) {
     // Newest first — page 1 is the most recent entry; flip back to revisit older ones.
     return all.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [state]);
+
+  const months = useMemo(() => monthsFromEntries(allEntries), [allEntries]);
+  const [monthFilter, setMonthFilter] = useState('');
+  const entries = useMemo(() => (
+    monthFilter ? allEntries.filter(e => (e.date || '').slice(0, 7) === monthFilter) : allEntries
+  ), [allEntries, monthFilter]);
+
   const total = entries.length;
   const [index, setIndex] = useState(0);
+  // Reset to page 1 when the filter changes
+  useEffect(() => { setIndex(0); }, [monthFilter]);
   const clampedIndex = Math.min(index, Math.max(0, total - 1));
   const entry = entries[clampedIndex];
 
@@ -2268,19 +2277,49 @@ function BookView({ state }) {
         </p>
       </div>
 
-      {total === 0 ? (
+      {allEntries.length === 0 ? (
         <EmptyState label="No chapters in your saga yet."/>
       ) : (
         <>
-          <ExportControls entries={entries} state={state}/>
-          <BookSpread entry={entry}/>
-          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
-            <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-              Page {clampedIndex + 1} of {total}
-            </div>
-            <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
+          {/* Filter row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10.5, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700 }}>
+              Show
+            </span>
+            <select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}
+              style={{
+                padding: '9px 12px', border: '1px solid #e3dcc8', borderRadius: 8,
+                fontSize: 14, background: '#fff', fontFamily: 'inherit', color: '#1f1d1a',
+                minWidth: 180,
+              }}>
+              <option value="">All months</option>
+              {months.map(m => (
+                <option key={m} value={m}>{formatMonth(m)}</option>
+              ))}
+            </select>
+            {monthFilter && (
+              <span style={{ fontSize: 11, color: '#7c7c7c', fontStyle: 'italic' }}>
+                {total} {total === 1 ? 'entry' : 'entries'} in {formatMonth(monthFilter)}
+              </span>
+            )}
+            <div style={{ flex: 1 }}/>
+            {total > 0 && <ExportControls entries={entries} state={state}/>}
           </div>
+
+          {total === 0 ? (
+            <EmptyState label={`No entries in ${formatMonth(monthFilter)}.`}/>
+          ) : (
+            <>
+              <BookSpread entry={entry}/>
+              <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <Button variant="outline" onClick={() => setIndex(Math.max(0, clampedIndex - 1))} disabled={clampedIndex === 0}>← Previous</Button>
+                <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7c7c7c', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  Page {clampedIndex + 1} of {total}
+                </div>
+                <Button variant="outline" onClick={() => setIndex(Math.min(total - 1, clampedIndex + 1))} disabled={clampedIndex === total - 1}>Next →</Button>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
@@ -2493,6 +2532,89 @@ function PrintSection({ label, body }) {
   );
 }
 
+// Right page of a Saga spread that auto-paginates when its content
+// overflows. The book stays at the default height; long bodies turn the
+// page on the right side. The left page (photo, title, tags) is unchanged.
+function PaginatedRightPage({ entryKey, height = 520, padTop = 36, padRight = 38, padBottom = 36, padLeft = 34, contentStyle, children }) {
+  const innerRef = React.useRef(null);
+  const [page, setPage] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const usable = height - padTop - padBottom;
+
+  // Reset to page 1 whenever we move to a new entry
+  useEffect(() => { setPage(0); }, [entryKey]);
+
+  // Measure overflow after layout. A ResizeObserver re-measures on font /
+  // image-load reflows so the page count stays accurate.
+  React.useLayoutEffect(() => {
+    if (!innerRef.current) return;
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = innerRef.current;
+        if (!el) return;
+        const totalH = el.scrollHeight;
+        setPageCount(Math.max(1, Math.ceil(totalH / usable)));
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(innerRef.current);
+    return () => { ro.disconnect(); cancelAnimationFrame(raf); };
+  }, [entryKey, usable, children]);
+
+  return (
+    <div className="rj-page-right" style={{
+      background: 'linear-gradient(180deg, #fdf6e3 0%, #f7f0d8 100%)',
+      padding: `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`,
+      minHeight: height, height: height,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div ref={innerRef} style={{
+        transform: `translateY(${-page * usable}px)`,
+        transition: 'transform .3s cubic-bezier(.25,.7,.3,1)',
+        ...contentStyle,
+      }}>
+        {children}
+      </div>
+      {pageCount > 1 && (
+        <div style={{
+          position: 'absolute', bottom: 12, right: 14,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'rgba(255,253,247,0.9)', border: '1px solid #d9c78a',
+          padding: '3px 6px 3px 4px', borderRadius: 999,
+          boxShadow: '0 1px 3px rgba(31,29,26,0.08)',
+          backdropFilter: 'blur(2px)',
+        }}>
+          <button type="button" disabled={page === 0}
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            aria-label="Previous page"
+            style={{
+              width: 24, height: 24, border: 'none', borderRadius: 999,
+              background: 'transparent', color: page === 0 ? '#bab4a1' : '#9b1844',
+              cursor: page === 0 ? 'default' : 'pointer', fontSize: 14, lineHeight: 1,
+              padding: 0, fontWeight: 700,
+            }}>‹</button>
+          <span style={{
+            fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase',
+            color: '#7c7c7c', fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 30, textAlign: 'center',
+          }}>{page + 1} / {pageCount}</span>
+          <button type="button" disabled={page === pageCount - 1}
+            onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+            aria-label="Next page"
+            style={{
+              width: 24, height: 24, border: 'none', borderRadius: 999,
+              background: 'transparent', color: page === pageCount - 1 ? '#bab4a1' : '#9b1844',
+              cursor: page === pageCount - 1 ? 'default' : 'pointer', fontSize: 14, lineHeight: 1,
+              padding: 0, fontWeight: 700,
+            }}>›</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BookSpread({ entry }) {
   const isTutorial = entry._kind === 'tutorial';
   const isBook     = entry._kind === 'book';
@@ -2512,7 +2634,8 @@ function BookSpread({ entry }) {
         {/* Left page — photo + title + values/skills */}
         <div className="rj-page-left" style={{
           background: pageBg, padding: '36px 34px 36px 38px',
-          minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
+          minHeight: 520,
+          borderRight: '1px solid rgba(155,24,68,0.08)',
           display: 'flex', flexDirection: 'column', gap: 14,
         }}>
           <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#c98508', fontWeight: 700 }}>
@@ -2542,15 +2665,13 @@ function BookSpread({ entry }) {
           background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
         }}/>
 
-        {/* Right page — task / process / why */}
-        <div className="rj-page-right" style={{
-          background: pageBg, padding: '36px 38px 36px 34px',
-          minHeight: 520, display: 'flex', flexDirection: 'column', gap: 18,
-        }}>
+        {/* Right page — task / process / why (paginates on overflow) */}
+        <PaginatedRightPage entryKey={entry.id}
+          contentStyle={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {entry.description && <BookSection label="The task"           color="#9b1844" body={entry.description}/>}
           {entry.process     && <BookSection label="How I made it"     color="#558b3f" body={entry.process}/>}
           {entry.why         && <BookSection label="Why I'm proud"     color="#c98508" body={entry.why}/>}
-        </div>
+        </PaginatedRightPage>
       </div>
     );
   }
@@ -2591,11 +2712,8 @@ function BookSpread({ entry }) {
           background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
         }}/>
 
-        {/* Right page — review */}
-        <div className="rj-page-right" style={{
-          background: pageBg, padding: '36px 38px 36px 34px',
-          minHeight: 520,
-        }}>
+        {/* Right page — review (paginates on overflow) */}
+        <PaginatedRightPage entryKey={entry.id}>
           <div style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#558b3f', fontWeight: 700, marginBottom: 8 }}>
             Review
           </div>
@@ -2606,7 +2724,7 @@ function BookSpread({ entry }) {
           ) : (
             <div style={{ fontSize: 13, color: '#7c7c7c', fontStyle: 'italic' }}>(No review written.)</div>
           )}
-        </div>
+        </PaginatedRightPage>
       </div>
     );
   }
@@ -2678,11 +2796,9 @@ function BookSpread({ entry }) {
         background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
       }}/>
 
-      {/* Right page */}
-      <div className="rj-page-right" style={{
-        background: pageBg, padding: '36px 38px 36px 34px',
-        minHeight: 520, display: 'flex', flexDirection: 'column', gap: 18,
-      }}>
+      {/* Right page — paginates internally on overflow */}
+      <PaginatedRightPage entryKey={entry.id}
+        contentStyle={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         {isTutorial ? (
           <>
             {entry.story       && <BookSection label="What happened"           body={entry.story}/>}
@@ -2698,7 +2814,7 @@ function BookSpread({ entry }) {
             {entry.tricky && <BookSection label="Something tricky" body={entry.tricky} color="#009fe3"/>}
           </>
         )}
-      </div>
+      </PaginatedRightPage>
     </div>
   );
 }
