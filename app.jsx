@@ -864,6 +864,12 @@ function FilterBar({ filter, onChange, kind = 'reflection', availableMonths = []
   );
 }
 
+// Sort entries newest-first by `date`. Entries with no date sink to the
+// bottom. Stable-ish — same-date entries keep insertion order.
+function sortByDateDesc(entries) {
+  return [...entries].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+
 // Bucket an ISO date string into a human label relative to today.
 function dateBucket(iso) {
   if (!iso) return 'Undated';
@@ -974,7 +980,7 @@ function WeeklyView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['moment', 'proud', 'tricky', 'caption', 'mood']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['moment', 'proud', 'tricky', 'caption', 'mood']));
 
   return (
     <div>
@@ -1271,7 +1277,7 @@ function TutorialView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['title', 'story', 'shift', 'wentWell', 'differently', 'discuss', 'caption']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['title', 'story', 'shift', 'wentWell', 'differently', 'discuss', 'caption']));
 
   const yellowTotal = entries.reduce((n, e) => n + (e.yellowTickets || 0), 0);
   const blueTotal   = entries.reduce((n, e) => n + (e.blueTickets   || 0), 0);
@@ -1516,7 +1522,7 @@ function LibraryView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['title', 'author', 'review']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['title', 'author', 'review']));
   const avg = entries.length ? (entries.reduce((s, e) => s + (e.rating || 0), 0) / entries.length) : 0;
 
   return (
@@ -1766,7 +1772,7 @@ function TrophiesView({ entries, onAdd, onUpdate, onDelete }) {
   }
 
   const months = monthsFromEntries(entries);
-  const filtered = applyFilter(entries, filter, ['title', 'description', 'process', 'why']);
+  const filtered = sortByDateDesc(applyFilter(entries, filter, ['title', 'description', 'process', 'why']));
 
   return (
     <div>
@@ -2211,7 +2217,8 @@ function BookView({ state }) {
       ...(state.books || []).map(e => ({ ...e, _kind: 'book' })),
       ...(state.works || []).map(e => ({ ...e, _kind: 'work' })),
     ];
-    return all.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    // Newest first — page 1 is the most recent entry; flip back to revisit older ones.
+    return all.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [state]);
   const total = entries.length;
   const [index, setIndex] = useState(0);
