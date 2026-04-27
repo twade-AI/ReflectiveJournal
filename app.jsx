@@ -2049,6 +2049,14 @@ function ScrapbookView({ state }) {
         title: e.title, values: [], kind: 'Book',
       });
     });
+    (state.works || []).forEach(e => {
+      if (e.photo) rows.push({
+        id: e.id, photo: e.photo,
+        caption: '',
+        date: e.date,
+        title: e.title, values: e.values || [], kind: 'Trophy',
+      });
+    });
     return rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [state]);
 
@@ -2156,6 +2164,7 @@ function BookView({ state }) {
       ...state.weekly.map(e => ({ ...e, _kind: 'weekly' })),
       ...state.tutorial.map(e => ({ ...e, _kind: 'tutorial' })),
       ...(state.books || []).map(e => ({ ...e, _kind: 'book' })),
+      ...(state.works || []).map(e => ({ ...e, _kind: 'work' })),
     ];
     return all.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   }, [state]);
@@ -2182,7 +2191,7 @@ function BookView({ state }) {
           Your voyage, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
         </h1>
         <p style={{ fontSize: 15, color: '#5f5a52', marginTop: 12, maxWidth: 600, lineHeight: 1.5 }}>
-          Every reflection, long tutorial, and book in order, page by page. Use the arrow keys or the buttons to turn the page.
+          Every reflection, long tutorial, book, and trophy in order, page by page. Use the arrow keys or the buttons to turn the page.
         </p>
       </div>
 
@@ -2278,6 +2287,45 @@ function BookPrintable({ entries, sinceLabel }) {
 function PrintEntry({ entry }) {
   const isTutorial = entry._kind === 'tutorial';
   const isBook     = entry._kind === 'book';
+  const isWork     = entry._kind === 'work';
+
+  if (isWork) {
+    return (
+      <div className="rj-print-entry">
+        <div className="rj-print-meta" style={{ color: '#c98508' }}>
+          Trophy · {formatDate(entry.date)}
+        </div>
+        <h2 className="rj-print-h">{entry.title || 'Untitled'}</h2>
+        {(entry.values?.length > 0 || entry.skills?.length > 0) && (
+          <div className="rj-print-values">
+            {(entry.values || []).map(id => VALUE_BY_ID[id] && (
+              <span key={`v-${id}`} className="rj-print-tag" style={{ borderColor: VALUE_BY_ID[id].color, color: VALUE_BY_ID[id].color }}>
+                {VALUE_BY_ID[id].label}
+              </span>
+            ))}
+            {(entry.skills || []).map(id => SKILL_BY_ID[id] && (
+              <span key={`s-${id}`} className="rj-print-tag" style={{ borderColor: SKILL_BY_ID[id].color, color: SKILL_BY_ID[id].color }}>
+                {SKILL_BY_ID[id].label}
+              </span>
+            ))}
+          </div>
+        )}
+        {entry.photo && (
+          <figure className="rj-print-figure">
+            <img src={entry.photo} alt=""/>
+          </figure>
+        )}
+        {entry.description && <PrintSection label="The task"           body={entry.description}/>}
+        {entry.process     && <PrintSection label="How I made it"     body={entry.process}/>}
+        {entry.why         && <PrintSection label="Why I'm proud"     body={entry.why}/>}
+        {entry.video && (
+          <div style={{ marginTop: '5mm', fontSize: '10pt', fontStyle: 'italic', color: '#7c7c7c' }}>
+            (A walkthrough video accompanies this entry in the digital journal.)
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (isBook) {
     return (
@@ -2375,7 +2423,64 @@ function PrintSection({ label, body }) {
 function BookSpread({ entry }) {
   const isTutorial = entry._kind === 'tutorial';
   const isBook     = entry._kind === 'book';
+  const isWork     = entry._kind === 'work';
   const pageBg = 'linear-gradient(180deg, #fdf6e3 0%, #f7f0d8 100%)';
+
+  if (isWork) {
+    return (
+      <div className="rj-spread" style={{
+        position: 'relative',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) 16px minmax(0, 1fr)',
+        borderRadius: 14, overflow: 'hidden',
+        boxShadow: '0 10px 30px rgba(31,29,26,0.12), 0 2px 4px rgba(31,29,26,0.05)',
+        background: '#c98508',
+      }}>
+        {/* Left page — photo + title + values/skills */}
+        <div className="rj-page-left" style={{
+          background: pageBg, padding: '36px 34px 36px 38px',
+          minHeight: 520, borderRight: '1px solid rgba(155,24,68,0.08)',
+          display: 'flex', flexDirection: 'column', gap: 14,
+        }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#c98508', fontWeight: 700 }}>
+            Trophy · {formatDate(entry.date)}
+          </div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: '#1f1d1a', lineHeight: 1.15, letterSpacing: '-0.01em' }}>
+            {entry.title || 'Untitled'}
+          </div>
+          {entry.photo && (
+            <img src={entry.photo} alt=""
+              style={{ width: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(31,29,26,0.1)', aspectRatio: '4/3', objectFit: 'cover' }}/>
+          )}
+          {entry.video && (
+            <video src={entry.video} controls preload="metadata"
+              style={{ width: '100%', borderRadius: 6, background: '#000', maxHeight: 240 }}/>
+          )}
+          {(entry.values?.length > 0 || entry.skills?.length > 0) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {(entry.values || []).map(id => VALUE_BY_ID[id] && <ValueTag key={`v-${id}`} value={VALUE_BY_ID[id]} selected size="sm"/>)}
+              {(entry.skills || []).map(id => SKILL_BY_ID[id] && <ValueTag key={`s-${id}`} value={SKILL_BY_ID[id]} selected size="sm"/>)}
+            </div>
+          )}
+        </div>
+
+        {/* Spine */}
+        <div className="rj-spine" style={{
+          background: 'linear-gradient(90deg, rgba(31,29,26,0.22), rgba(31,29,26,0.05) 30%, rgba(31,29,26,0.05) 70%, rgba(31,29,26,0.22))',
+        }}/>
+
+        {/* Right page — task / process / why */}
+        <div className="rj-page-right" style={{
+          background: pageBg, padding: '36px 38px 36px 34px',
+          minHeight: 520, display: 'flex', flexDirection: 'column', gap: 18,
+        }}>
+          {entry.description && <BookSection label="The task"           color="#9b1844" body={entry.description}/>}
+          {entry.process     && <BookSection label="How I made it"     color="#558b3f" body={entry.process}/>}
+          {entry.why         && <BookSection label="Why I'm proud"     color="#c98508" body={entry.why}/>}
+        </div>
+      </div>
+    );
+  }
 
   if (isBook) {
     return (
