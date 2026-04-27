@@ -1863,7 +1863,7 @@ function TrophyCard({ entry, onEdit, onDelete }) {
       {open && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #efe9d9', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {entry.video && (
-            <video src={entry.video} controls preload="metadata"
+            <DataVideo src={entry.video}
               style={{ width: '100%', maxHeight: 380, borderRadius: 8, background: '#000' }}/>
           )}
           {entry.description && <DetailRow label="The task"           color="#9b1844" body={entry.description}/>}
@@ -1968,9 +1968,9 @@ function VideoUpload({ value, onChange }) {
   if (value) {
     return (
       <div>
-        <video src={value} controls preload="metadata"
+        <DataVideo src={value}
           style={{ width: '100%', maxHeight: 320, borderRadius: 10, background: '#000', display: 'block' }}/>
-        <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+        <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button type="button" onClick={() => onChange(null)}
             style={{
               border: '1.5px solid #9b1844', background: '#fff', color: '#9b1844',
@@ -1990,7 +1990,7 @@ function VideoUpload({ value, onChange }) {
             Replace
           </button>
         </div>
-        <input ref={inputRef} type="file" accept="video/*" capture="user" style={{ display: 'none' }}
+        <input ref={inputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" style={{ display: 'none' }}
           onChange={(e) => onFile(e.target.files?.[0])}/>
       </div>
     );
@@ -2014,13 +2014,58 @@ function VideoUpload({ value, onChange }) {
         <span style={{ fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
           Add a walkthrough video
         </span>
+        <span style={{ fontSize: 11, fontStyle: 'italic', color: '#7c7c7c', textAlign: 'center', maxWidth: 320 }}>
+          MP4 plays everywhere. iPhone .MOV files mostly do too — if a clip won't play, re-record in your camera's "Most Compatible" setting.
+        </span>
       </button>
       {error && (
         <div style={{ marginTop: 10, fontSize: 12, color: '#9b1844', fontStyle: 'italic' }}>{error}</div>
       )}
-      <input ref={inputRef} type="file" accept="video/*" capture="user" style={{ display: 'none' }}
+      <input ref={inputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" style={{ display: 'none' }}
         onChange={(e) => onFile(e.target.files?.[0])}/>
     </div>
+  );
+}
+
+// <video> wrapper that plays reliably across browsers. Converts dataURL
+// sources to a Blob URL — Safari has known issues streaming `<video>` from
+// `data:` URLs, especially when seeking. Adds `playsInline` so iOS can play
+// inline rather than forcing fullscreen.
+function DataVideo({ src, style }) {
+  const [resolvedSrc, setResolvedSrc] = useState(null);
+  useEffect(() => {
+    if (!src) { setResolvedSrc(null); return; }
+    if (!src.startsWith('data:')) {
+      setResolvedSrc(src);
+      return;
+    }
+    let revoked = false;
+    let urlToRevoke = null;
+    fetch(src)
+      .then(r => r.blob())
+      .then(blob => {
+        if (revoked) return;
+        urlToRevoke = URL.createObjectURL(blob);
+        setResolvedSrc(urlToRevoke);
+      })
+      .catch(() => setResolvedSrc(src)); // fall back to the data URL itself
+    return () => {
+      revoked = true;
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+    };
+  }, [src]);
+
+  if (!resolvedSrc) {
+    return <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Loading video…</div>;
+  }
+  return (
+    <video
+      key={resolvedSrc}
+      src={resolvedSrc}
+      controls
+      playsInline
+      preload="metadata"
+      style={style}/>
   );
 }
 
@@ -2453,7 +2498,7 @@ function BookSpread({ entry }) {
               style={{ width: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(31,29,26,0.1)', aspectRatio: '4/3', objectFit: 'cover' }}/>
           )}
           {entry.video && (
-            <video src={entry.video} controls preload="metadata"
+            <DataVideo src={entry.video}
               style={{ width: '100%', borderRadius: 6, background: '#000', maxHeight: 240 }}/>
           )}
           {(entry.values?.length > 0 || entry.skills?.length > 0) && (
