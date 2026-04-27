@@ -17,7 +17,14 @@ function useJournal() {
     return EMPTY;
   });
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      // Most often QuotaExceededError — the journal got too big to fit in
+      // localStorage (~5MB on iOS). Tell the App via a custom event so it
+      // can show a toast.
+      window.dispatchEvent(new CustomEvent('rj:storage-error', { detail: e }));
+    }
   }, [state]);
   return [state, setState];
 }
@@ -48,6 +55,17 @@ function App() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(null);
   };
+
+  // Surface localStorage quota failures (or other write errors) so pupils
+  // know their entry didn't actually persist.
+  useEffect(() => {
+    const onErr = () => showToast(
+      "Couldn't save — your journal is too big for local storage. Try removing an older photo or video.",
+      { durationMs: 9000 }
+    );
+    window.addEventListener('rj:storage-error', onErr);
+    return () => window.removeEventListener('rj:storage-error', onErr);
+  }, []);
 
   const patch = (fn) => setState(fn);
   const addWeekly      = (e) => { patch(s => ({ ...s, weekly:   [{ ...e, id: newId() }, ...s.weekly] }));         showToast('Reflection saved'); };
@@ -1961,9 +1979,12 @@ function VideoUpload({ value, onChange }) {
   const onFile = (file) => {
     if (!file) return;
     setError(null);
-    const cap = 5 * 1024 * 1024; // 5MB
+    // Browser localStorage caps at ~5MB total per origin (less on iOS), and
+    // a single video at 2MB encodes to ~2.7MB base64, leaving room for
+    // photos and other entries. Bigger than this needs a backend.
+    const cap = 2 * 1024 * 1024; // 2MB
     if (file.size > cap) {
-      setError(`That video is ${(file.size / 1024 / 1024).toFixed(1)}MB. The browser can store clips up to about ${(cap / 1024 / 1024).toFixed(0)}MB — try a shorter or lower-quality recording.`);
+      setError(`That video is ${(file.size / 1024 / 1024).toFixed(1)}MB. The browser can store clips up to about ${(cap / 1024 / 1024).toFixed(0)}MB — try a shorter clip or a lower-quality setting.`);
       return;
     }
     const reader = new FileReader();

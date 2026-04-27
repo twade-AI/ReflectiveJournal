@@ -116,15 +116,62 @@ function ValuePicker({ selected = [], onChange, size = 'md', items = VALUES }) {
 }
 
 // ── Photo upload ───────────────────────────────────────────────
-// Stores uploads inline as dataURLs. Good enough for a prototype; a real
-// backend would swap this for a signed-URL upload + stored reference.
+// Stores uploads inline as dataURLs. To avoid blowing past localStorage's
+// ~5MB-per-origin quota on iOS, photos are downscaled and re-encoded as
+// JPEG before being stored. A typical phone-camera shot drops from
+// several MB to ~150KB. A real backend would swap this for a signed-URL
+// upload + stored reference.
+async function compressImageFile(file, { maxDim = 1280, quality = 0.82 } = {}) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error('Image decode failed'));
+    i.src = dataUrl;
+  });
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return dataUrl; // give up gracefully — fall back to raw
+  const scale = Math.min(1, maxDim / Math.max(w, h));
+  const targetW = Math.max(1, Math.round(w * scale));
+  const targetH = Math.max(1, Math.round(h * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+  // Some browsers refuse to encode certain CMYK / EXIF-rotated images. If
+  // toDataURL throws, fall back to the raw upload.
+  try {
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch {
+    return dataUrl;
+  }
+}
+
 function PhotoUpload({ value, onChange, caption, onCaption }) {
   const inputRef = React.useRef(null);
-  const onFile = (file) => {
+  const [busy, setBusy] = React.useState(false);
+  const onFile = async (file) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result);
-    reader.readAsDataURL(file);
+    setBusy(true);
+    try {
+      const compressed = await compressImageFile(file);
+      onChange(compressed);
+    } catch {
+      // Last-ditch fallback: just store the raw file.
+      const reader = new FileReader();
+      reader.onload = () => onChange(reader.result);
+      reader.readAsDataURL(file);
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (value) {
@@ -162,24 +209,24 @@ function PhotoUpload({ value, onChange, caption, onCaption }) {
     );
   }
   return (
-    <button type="button" onClick={() => inputRef.current?.click()}
+    <button type="button" disabled={busy} onClick={() => inputRef.current?.click()}
       style={{
         width: '100%', aspectRatio: '4 / 3',
         border: '1.5px dashed #b9607d', borderRadius: 10,
         background: 'rgba(221,189,202,0.12)', color: '#9b1844',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 8, cursor: 'pointer', fontFamily: 'inherit',
-        transition: 'background .12s',
+        gap: 8, cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit',
+        transition: 'background .12s', opacity: busy ? 0.7 : 1,
       }}
-      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(221,189,202,0.25)'}
-      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(221,189,202,0.12)'}>
+      onMouseEnter={(e) => !busy && (e.currentTarget.style.background = 'rgba(221,189,202,0.25)')}
+      onMouseLeave={(e) => !busy && (e.currentTarget.style.background = 'rgba(221,189,202,0.12)')}>
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="5" width="18" height="14" rx="1.5"/>
         <circle cx="9" cy="11" r="1.5"/>
         <path d="M3 17l5-5 4 4 3-3 6 5"/>
       </svg>
       <span style={{ fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
-        Add a photo (optional)
+        {busy ? 'Compressing…' : 'Add a photo (optional)'}
       </span>
       <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={(e) => onFile(e.target.files?.[0])}/>
