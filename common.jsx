@@ -7,29 +7,31 @@ const VALUES = [
   { id: 'integrity', label: 'Integrity',  color: '#2a2b7c', tint: '#d4d5e5', glyph: 'I',  prompt: 'doing the right thing when unseen' },
   { id: 'kindness',  label: 'Kindness',   color: '#e6007e', tint: '#f9d0e5', glyph: 'K',  prompt: 'putting someone else first' },
   { id: 'respect',   label: 'Respect',    color: '#9b1844', tint: '#ead0d7', glyph: 'R',  prompt: 'honouring people, place and self' },
+  { id: 'service',   label: 'Service',    color: '#2f7d3a', tint: '#d6e8d2', glyph: 'S',  prompt: 'showing up for others or your community' },
 ];
 const VALUE_BY_ID = Object.fromEntries(VALUES.map(v => [v.id, v]));
 
 // Skills palette — separate from the brand values, with a cooler/cleaner
 // tone. Used alongside values on every reflection.
 const SKILLS = [
-  { id: 'organisation',  label: 'Organisation',            color: '#3a5a8c', tint: '#dde4ee' },
-  { id: 'reflection',    label: 'Reflection',              color: '#7e57c2', tint: '#e7defa' },
-  { id: 'leadership',    label: 'Leadership and Teamwork', color: '#00897b', tint: '#cfe9e6' },
-  { id: 'time',          label: 'Time Management',         color: '#c98508', tint: '#fbeed3' },
-  { id: 'problem',       label: 'Problem Solving',         color: '#558b3f', tint: '#dfe9d2' },
-  { id: 'critical',      label: 'Critical Thinking',       color: '#8b3a62', tint: '#ead2da' },
-  { id: 'communication', label: 'Communication',           color: '#0288d1', tint: '#cee5f1' },
+  { id: 'organisation',  label: 'Organisation',      color: '#3a5a8c', tint: '#dde4ee' },
+  { id: 'leadership',    label: 'Leadership',        color: '#00897b', tint: '#cfe9e6' },
+  { id: 'teamwork',      label: 'Teamwork',          color: '#7e57c2', tint: '#e7defa' },
+  { id: 'time',          label: 'Time Management',   color: '#c98508', tint: '#fbeed3' },
+  { id: 'problem',       label: 'Problem Solving',   color: '#558b3f', tint: '#dfe9d2' },
+  { id: 'critical',      label: 'Critical Thinking', color: '#8b3a62', tint: '#ead2da' },
+  { id: 'creative',      label: 'Creative Thinking', color: '#d97757', tint: '#f6dfd2' },
+  { id: 'communication', label: 'Communication',     color: '#0288d1', tint: '#cee5f1' },
 ];
 const SKILL_BY_ID = Object.fromEntries(SKILLS.map(s => [s.id, s]));
 
 // Compass-friendly multi-line labels for long names.
 function compassLabel(label) {
   const map = {
-    'leadership and teamwork': ['LEADERSHIP &', 'TEAMWORK'],
-    'time management':         ['TIME',         'MANAGEMENT'],
-    'problem solving':         ['PROBLEM',      'SOLVING'],
-    'critical thinking':       ['CRITICAL',     'THINKING'],
+    'time management':   ['TIME',     'MANAGEMENT'],
+    'problem solving':   ['PROBLEM',  'SOLVING'],
+    'critical thinking': ['CRITICAL', 'THINKING'],
+    'creative thinking': ['CREATIVE', 'THINKING'],
   };
   return map[(label || '').toLowerCase()] ?? [(label || '').toUpperCase()];
 }
@@ -155,7 +157,7 @@ async function compressImageFile(file, { maxDim = 1280, quality = 0.82 } = {}) {
   }
 }
 
-function PhotoUpload({ value, onChange, caption, onCaption }) {
+function PhotoUpload({ value, onChange, caption, onCaption, compact = false }) {
   const inputRef = React.useRef(null);
   const [busy, setBusy] = React.useState(false);
   const onFile = async (file) => {
@@ -175,6 +177,43 @@ function PhotoUpload({ value, onChange, caption, onCaption }) {
   };
 
   if (value) {
+    if (compact) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{
+            position: 'relative', borderRadius: 8, overflow: 'hidden',
+            width: 120, height: 90, background: '#ead0d7', flexShrink: 0,
+          }}>
+            <img src={value} alt="Reflection" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+          </div>
+          <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button type="button" onClick={() => onChange(null)}
+              style={{
+                alignSelf: 'flex-start',
+                background: 'transparent', color: '#9b1844',
+                border: '1px solid #e3dcc8', borderRadius: 999,
+                padding: '5px 12px', fontSize: 11, cursor: 'pointer',
+                fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+              }}>
+              Remove
+            </button>
+            {onCaption && (
+              <input
+                type="text"
+                value={caption || ''}
+                onChange={(e) => onCaption(e.target.value)}
+                placeholder="Caption (optional)"
+                style={{
+                  width: '100%', padding: '8px 12px',
+                  border: '1px solid #e3dcc8', borderRadius: 8,
+                  fontSize: 14, background: '#fff', fontFamily: 'inherit',
+                  color: '#1f1d1a',
+                }}/>
+            )}
+          </div>
+        </div>
+      );
+    }
     return (
       <div>
         <div style={{
@@ -206,6 +245,32 @@ function PhotoUpload({ value, onChange, caption, onCaption }) {
             }}/>
         )}
       </div>
+    );
+  }
+  if (compact) {
+    return (
+      <button type="button" disabled={busy} onClick={() => inputRef.current?.click()}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 10,
+          padding: '9px 16px',
+          border: '1.5px dashed #b9607d', borderRadius: 8,
+          background: 'rgba(221,189,202,0.12)', color: '#9b1844',
+          cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit',
+          transition: 'background .12s', opacity: busy ? 0.7 : 1,
+        }}
+        onMouseEnter={(e) => !busy && (e.currentTarget.style.background = 'rgba(221,189,202,0.25)')}
+        onMouseLeave={(e) => !busy && (e.currentTarget.style.background = 'rgba(221,189,202,0.12)')}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="1.5"/>
+          <circle cx="9" cy="11" r="1.5"/>
+          <path d="M3 17l5-5 4 4 3-3 6 5"/>
+        </svg>
+        <span style={{ fontSize: 11.5, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
+          {busy ? 'Compressing…' : 'Add a photo or sketch'}
+        </span>
+        <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={(e) => onFile(e.target.files?.[0])}/>
+      </button>
     );
   }
   return (
