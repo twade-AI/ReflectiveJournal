@@ -576,7 +576,9 @@ function ValuesChart({ counts, max, items = VALUES, history }) {
   const armMax   = 128;
   const armMin   = 54;
   const armHalfW = n > 5 ? 11 : 14;     // narrower arms when there are more
-  const labelR   = 170;
+  // Label radius sits well outside the outer ring (148 + 10 outer band) so
+  // multi-line labels don't crash into the compass body.
+  const labelR   = 196;
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const stepDeg = 360 / n;
 
@@ -622,7 +624,7 @@ function ValuesChart({ counts, max, items = VALUES, history }) {
   return (
     <div>
       <svg viewBox={`0 0 ${size} ${size}`}
-        style={{ display: 'block', width: '100%', maxWidth: 480, margin: '0 auto', overflow: 'visible' }}>
+        style={{ display: 'block', width: '100%', maxWidth: 420, margin: '0 auto', overflow: 'visible' }}>
         <defs>
           <filter id="armShadow" x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="1.8"/>
@@ -1955,7 +1957,7 @@ function WorkForm({ onSave, onCancel, initial }) {
       </Field>
 
       <Field label="Photo of the work" hint="Required — a photo of the finished thing.">
-        <PhotoUpload value={photo} onChange={setPhoto}/>
+        <PhotoUpload value={photo} onChange={setPhoto} compact/>
       </Field>
 
       <Field label="Walkthrough video (optional)" hint="A short clip explaining your answers to the prompts above. Small clips work best (the journal stores them in your browser).">
