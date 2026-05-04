@@ -159,8 +159,8 @@ function NavBar({ view, onNav, pupil }) {
     { id: 'tutorial',  label: 'Long Tutorials' },
     { id: 'library',   label: 'The Library' },
     { id: 'trophies',  label: 'Trophies' },
-    { id: 'scrapbook', label: 'Relics' },
-    { id: 'book',      label: 'The Saga' },
+    { id: 'scrapbook', label: 'Snapshots' },
+    { id: 'book',      label: 'The Journey' },
   ];
   return (
     <header style={{
@@ -323,24 +323,27 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
   return (
     <div>
-      {/* Odyssey hero — no frame; multiply blends the logo's white background into the parchment */}
-      <div style={{ margin: '-16px 0 0', textAlign: 'center' }}>
+      {/* Odyssey hero — restrained size; multiply lets the parchment art sit naturally on the page */}
+      <div style={{ margin: '-4px 0 0', textAlign: 'center' }}>
         <img src="assets/logo-odyssey.png" alt="The Haileybury Odyssey" className="rj-hero-logo"
           style={{
-            width: '100%', maxWidth: 640, height: 'auto', display: 'block', margin: '0 auto',
-            mixBlendMode: 'multiply',
+            width: '100%', maxWidth: 420, height: 'auto', display: 'block', margin: '0 auto',
+            mixBlendMode: 'multiply', opacity: 0.92,
           }}/>
       </div>
 
       <OrnamentDivider/>
 
-      {/* Greeting — drop cap, serif, journal feel */}
+      {/* Frontispiece — formal book-cover styling */}
       <div style={{ marginBottom: 8, textAlign: 'center' }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 10 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 14 }}>
           Chapter I · The Hero
         </div>
-        <h1 className="rj-hero-h1" style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
-          {pupil.name ? <>Hello, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>{pupil.name.split(' ')[0]}.</span></> : <>Your <span style={{ fontStyle: 'italic', color: '#9b1844' }}>hero's journey</span>.</>}
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 13, letterSpacing: '0.32em', textTransform: 'uppercase', color: '#5f5a52', fontWeight: 600, marginBottom: 6 }}>
+          {pupil.name ? 'The Journal of' : 'A'}
+        </div>
+        <h1 className="rj-hero-h1" style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1.1, letterSpacing: '0.01em', color: '#1f1d1a' }}>
+          {pupil.name ? pupil.name : <>Hero's Journey</>}
         </h1>
       </div>
 
@@ -1158,10 +1161,6 @@ function WeeklyForm({ onSave, onCancel, initial }) {
         <ValuePicker selected={skills} onChange={setSkills} items={SKILLS}/>
       </Field>
 
-      <Field label="Photo or sketch (optional)">
-        <PhotoUpload value={photo} onChange={setPhoto} caption={caption} onCaption={setCaption}/>
-      </Field>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         <Field label="I'm proud of…">
           <TextArea value={proud} onChange={setProud} rows={3} placeholder="Something small counts."/>
@@ -1173,6 +1172,10 @@ function WeeklyForm({ onSave, onCancel, initial }) {
 
       <Field label="My week in one word">
         <MoodPicker value={mood} onChange={setMood}/>
+      </Field>
+
+      <Field label="Photo or sketch (optional)">
+        <PhotoUpload value={photo} onChange={setPhoto} caption={caption} onCaption={setCaption} compact/>
       </Field>
     </FormShell>
   );
@@ -1485,10 +1488,6 @@ function TutorialForm({ onSave, onCancel, initial }) {
         <ValuePicker selected={skills} onChange={setSkills} items={SKILLS}/>
       </Field>
 
-      <Field label="Photo or sketch (optional)">
-        <PhotoUpload value={photo} onChange={setPhoto} caption={caption} onCaption={setCaption}/>
-      </Field>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         <Field label="What went well">
           <TextArea value={wentWell} onChange={setWentWell} rows={3}/>
@@ -1500,6 +1499,10 @@ function TutorialForm({ onSave, onCancel, initial }) {
 
       <Field label="To discuss with my tutor" hint="A question you want to bring into the long tutorial.">
         <TextArea value={discuss} onChange={setDiscuss} rows={3}/>
+      </Field>
+
+      <Field label="Photo or sketch (optional)">
+        <PhotoUpload value={photo} onChange={setPhoto} caption={caption} onCaption={setCaption} compact/>
       </Field>
 
       <div>
@@ -2135,7 +2138,7 @@ function ScrapbookView({ state }) {
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Relics</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Snapshots</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
           Treasures <span style={{ fontStyle: 'italic', color: '#9b1844' }}>from the voyage.</span>
         </h1>
@@ -2145,7 +2148,7 @@ function ScrapbookView({ state }) {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState label="No relics yet. Add a photo to a reflection or long tutorial and it'll appear here."/>
+        <EmptyState label="No snapshots yet. Add a photo to a reflection or long tutorial and it'll appear here."/>
       ) : (
         <ScrapbookCollage items={items}/>
       )}
@@ -2268,7 +2271,7 @@ function BookView({ state }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Saga</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Journey</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
           Your voyage, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
         </h1>
@@ -2278,7 +2281,7 @@ function BookView({ state }) {
       </div>
 
       {allEntries.length === 0 ? (
-        <EmptyState label="No chapters in your saga yet."/>
+        <EmptyState label="No chapters in your journey yet."/>
       ) : (
         <>
           {/* Filter row */}
