@@ -159,8 +159,8 @@ function NavBar({ view, onNav, pupil }) {
     { id: 'tutorial',  label: 'Long Tutorials' },
     { id: 'library',   label: 'The Library' },
     { id: 'trophies',  label: 'Trophies' },
-    { id: 'scrapbook', label: 'Relics' },
-    { id: 'book',      label: 'The Saga' },
+    { id: 'scrapbook', label: 'Snapshots' },
+    { id: 'book',      label: 'The Journey' },
   ];
   return (
     <header style={{
@@ -2138,7 +2138,7 @@ function ScrapbookView({ state }) {
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Relics</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>Snapshots</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
           Treasures <span style={{ fontStyle: 'italic', color: '#9b1844' }}>from the voyage.</span>
         </h1>
@@ -2148,7 +2148,7 @@ function ScrapbookView({ state }) {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState label="No relics yet. Add a photo to a reflection or long tutorial and it'll appear here."/>
+        <EmptyState label="No snapshots yet. Add a photo to a reflection or long tutorial and it'll appear here."/>
       ) : (
         <ScrapbookCollage items={items}/>
       )}
@@ -2271,7 +2271,7 @@ function BookView({ state }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Saga</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, marginBottom: 10 }}>The Journey</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
           Your voyage, <span style={{ fontStyle: 'italic', color: '#9b1844' }}>bound.</span>
         </h1>
@@ -2281,7 +2281,7 @@ function BookView({ state }) {
       </div>
 
       {allEntries.length === 0 ? (
-        <EmptyState label="No chapters in your saga yet."/>
+        <EmptyState label="No chapters in your journey yet."/>
       ) : (
         <>
           {/* Filter row */}
