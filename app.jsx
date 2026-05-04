@@ -334,18 +334,26 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
       <OrnamentDivider/>
 
-      {/* About me — card of ownership (moved to the top so the journal's owner is established first) */}
-      <div style={{ marginBottom: 10 }}>
-        <SectionHeader eyebrow="Chapter I · The Hero's Card" title="This journal belongs to…"/>
-      </div>
-      <FramedCard>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-          <Field label="Name"><TextInput value={pupil.name}  onChange={(v) => onUpdatePupil({ name: v })}  placeholder="Your name"/></Field>
-          <Field label="Year"><TextInput value={pupil.year}  onChange={(v) => onUpdatePupil({ year: v })}  placeholder="e.g. 8"/></Field>
-          <Field label="House"><TextInput value={pupil.house} onChange={(v) => onUpdatePupil({ house: v })} placeholder="House name"/></Field>
-          <Field label="Tutor"><TextInput value={pupil.tutor} onChange={(v) => onUpdatePupil({ tutor: v })} placeholder="Tutor's name"/></Field>
+      {/* Hero's Card — compact name plate, kept above-the-fold but quiet on the page */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+        padding: '10px 16px',
+        background: 'rgba(255,253,247,0.6)', border: '1px solid #e3dcc8',
+        borderRadius: 8,
+      }}>
+        <div style={{ fontSize: 9.5, letterSpacing: '0.28em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          The Hero's Card
         </div>
-      </FramedCard>
+        <div style={{
+          flex: '1 1 320px', display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8,
+        }}>
+          <CompactNamePlateField label="Name"  value={pupil.name}  onChange={(v) => onUpdatePupil({ name:  v })} placeholder="Your name"/>
+          <CompactNamePlateField label="Year"  value={pupil.year}  onChange={(v) => onUpdatePupil({ year:  v })} placeholder="e.g. 8"/>
+          <CompactNamePlateField label="House" value={pupil.house} onChange={(v) => onUpdatePupil({ house: v })} placeholder="House"/>
+          <CompactNamePlateField label="Tutor" value={pupil.tutor} onChange={(v) => onUpdatePupil({ tutor: v })} placeholder="Tutor"/>
+        </div>
+      </div>
 
       <OrnamentDivider/>
 
@@ -453,6 +461,30 @@ function OrnamentDivider({ color = '#c9a74a' }) {
 }
 
 // Chapter-style section header — small gold eyebrow + serif title, centred.
+// Tight inline label + input used by the Hero's Card name plate, so the
+// section can sit above the fold without dominating the page.
+function CompactNamePlateField({ label, value, onChange, placeholder }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+      <span style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9b1844', fontWeight: 700, whiteSpace: 'nowrap' }}>
+        {label}
+      </span>
+      <input
+        type="text"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          flex: 1, minWidth: 0,
+          padding: '5px 8px',
+          border: '1px solid #e3dcc8', borderRadius: 6,
+          background: '#fff', color: '#1f1d1a',
+          fontFamily: 'inherit', fontSize: 13,
+        }}/>
+    </label>
+  );
+}
+
 function SectionHeader({ eyebrow, title }) {
   return (
     <div style={{ textAlign: 'center', marginBottom: 18 }}>
