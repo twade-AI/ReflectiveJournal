@@ -334,10 +334,25 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
       <OrnamentDivider/>
 
+      {/* About me — card of ownership (moved to the top so the journal's owner is established first) */}
+      <div style={{ marginBottom: 10 }}>
+        <SectionHeader eyebrow="Chapter I · The Hero's Card" title="This journal belongs to…"/>
+      </div>
+      <FramedCard>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+          <Field label="Name"><TextInput value={pupil.name}  onChange={(v) => onUpdatePupil({ name: v })}  placeholder="Your name"/></Field>
+          <Field label="Year"><TextInput value={pupil.year}  onChange={(v) => onUpdatePupil({ year: v })}  placeholder="e.g. 8"/></Field>
+          <Field label="House"><TextInput value={pupil.house} onChange={(v) => onUpdatePupil({ house: v })} placeholder="House name"/></Field>
+          <Field label="Tutor"><TextInput value={pupil.tutor} onChange={(v) => onUpdatePupil({ tutor: v })} placeholder="Tutor's name"/></Field>
+        </div>
+      </FramedCard>
+
+      <OrnamentDivider/>
+
       {/* Frontispiece — formal book-cover styling */}
       <div style={{ marginBottom: 8, textAlign: 'center' }}>
         <div style={{ fontSize: 10, letterSpacing: '0.36em', textTransform: 'uppercase', color: '#8a6d2a', fontWeight: 700, marginBottom: 14 }}>
-          Chapter I · The Hero
+          Chapter II · The Hero
         </div>
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 13, letterSpacing: '0.32em', textTransform: 'uppercase', color: '#5f5a52', fontWeight: 600, marginBottom: 6 }}>
           {pupil.name ? 'The Journal of' : 'A'}
@@ -386,7 +401,7 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
 
       {/* The Compass — framed card with Values/Skills toggle */}
       <div style={{ marginBottom: 10 }}>
-        <SectionHeader eyebrow="Chapter II · The Compass" title="Which way are you growing?"/>
+        <SectionHeader eyebrow="Chapter III · The Compass" title="Which way are you growing?"/>
       </div>
       <FramedCard style={{ marginBottom: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
@@ -402,21 +417,6 @@ function ProfileView({ state, onNav, onUpdatePupil }) {
           counts={isSkills ? skillCounts : valueCounts}
           max={isSkills ? maxSkillCount : maxValueCount}
           history={isSkills ? compassHistory.skillSnapshots : compassHistory.valueSnapshots}/>
-      </FramedCard>
-
-      <OrnamentDivider/>
-
-      {/* About me — card of ownership */}
-      <div style={{ marginBottom: 10 }}>
-        <SectionHeader eyebrow="Chapter III · The Hero's Card" title="This journal belongs to…"/>
-      </div>
-      <FramedCard>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-          <Field label="Name"><TextInput value={pupil.name}  onChange={(v) => onUpdatePupil({ name: v })}  placeholder="Your name"/></Field>
-          <Field label="Year"><TextInput value={pupil.year}  onChange={(v) => onUpdatePupil({ year: v })}  placeholder="e.g. 8"/></Field>
-          <Field label="House"><TextInput value={pupil.house} onChange={(v) => onUpdatePupil({ house: v })} placeholder="House name"/></Field>
-          <Field label="Tutor"><TextInput value={pupil.tutor} onChange={(v) => onUpdatePupil({ tutor: v })} placeholder="Tutor's name"/></Field>
-        </div>
       </FramedCard>
     </div>
   );
@@ -624,7 +624,7 @@ function ValuesChart({ counts, max, items = VALUES, history }) {
   return (
     <div>
       <svg viewBox={`0 0 ${size} ${size}`}
-        style={{ display: 'block', width: '100%', maxWidth: 420, margin: '0 auto', overflow: 'visible' }}>
+        style={{ display: 'block', width: '100%', maxWidth: 420, margin: '28px auto 28px', overflow: 'visible' }}>
         <defs>
           <filter id="armShadow" x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="1.8"/>
