@@ -2031,25 +2031,32 @@ function VideoUpload({ value, onChange }) {
 
   if (value) {
     return (
-      <div>
-        <DataVideo src={value}
-          style={{ width: '100%', maxHeight: 320, borderRadius: 10, background: '#000', display: 'block' }}/>
-        <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{
+          position: 'relative', borderRadius: 8, overflow: 'hidden',
+          width: 160, height: 90, background: '#000', flexShrink: 0,
+        }}>
+          <DataVideo src={value}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}/>
+        </div>
+        <div style={{ flex: '1 1 200px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button type="button" onClick={() => onChange(null)}
             style={{
-              border: '1.5px solid #9b1844', background: '#fff', color: '#9b1844',
-              padding: '8px 14px', borderRadius: 999, fontFamily: 'inherit',
-              fontWeight: 700, fontSize: 12, letterSpacing: '0.08em',
-              textTransform: 'uppercase', cursor: 'pointer',
+              alignSelf: 'flex-start',
+              background: 'transparent', color: '#9b1844',
+              border: '1px solid #e3dcc8', borderRadius: 999,
+              padding: '5px 12px', fontSize: 11, cursor: 'pointer',
+              fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
             }}>
-            Remove video
+            Remove
           </button>
           <button type="button" onClick={() => inputRef.current?.click()}
             style={{
-              border: '1.5px solid #e3dcc8', background: '#fff', color: '#5f5a52',
-              padding: '8px 14px', borderRadius: 999, fontFamily: 'inherit',
-              fontWeight: 700, fontSize: 12, letterSpacing: '0.08em',
-              textTransform: 'uppercase', cursor: 'pointer',
+              alignSelf: 'flex-start',
+              background: 'transparent', color: '#5f5a52',
+              border: '1px solid #e3dcc8', borderRadius: 999,
+              padding: '5px 12px', fontSize: 11, cursor: 'pointer',
+              fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
             }}>
             Replace
           </button>
@@ -2064,26 +2071,26 @@ function VideoUpload({ value, onChange }) {
     <div>
       <button type="button" onClick={() => inputRef.current?.click()}
         style={{
-          width: '100%', padding: '24px 16px',
-          border: '1.5px dashed #c9a74a', borderRadius: 10,
+          display: 'inline-flex', alignItems: 'center', gap: 10,
+          padding: '9px 16px',
+          border: '1.5px dashed #c9a74a', borderRadius: 8,
           background: 'rgba(253,238,203,0.4)', color: '#8a6d2a',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          gap: 8, cursor: 'pointer', fontFamily: 'inherit',
+          cursor: 'pointer', fontFamily: 'inherit',
           transition: 'background .12s',
         }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="6" width="14" height="12" rx="2"/>
           <path d="M17 10l4-3v10l-4-3"/>
         </svg>
-        <span style={{ fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
+        <span style={{ fontSize: 11.5, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
           Add a walkthrough video
         </span>
-        <span style={{ fontSize: 11, fontStyle: 'italic', color: '#7c7c7c', textAlign: 'center', maxWidth: 320 }}>
-          MP4 plays everywhere. iPhone .MOV files mostly do too — if a clip won't play, re-record in your camera's "Most Compatible" setting.
-        </span>
       </button>
+      <div style={{ marginTop: 8, fontSize: 11, fontStyle: 'italic', color: '#7c7c7c', maxWidth: 460 }}>
+        MP4 plays everywhere. iPhone .MOV files mostly do too — if a clip won't play, re-record in your camera's "Most Compatible" setting.
+      </div>
       {error && (
-        <div style={{ marginTop: 10, fontSize: 12, color: '#9b1844', fontStyle: 'italic' }}>{error}</div>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#9b1844', fontStyle: 'italic' }}>{error}</div>
       )}
       <input ref={inputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" style={{ display: 'none' }}
         onChange={(e) => onFile(e.target.files?.[0])}/>
